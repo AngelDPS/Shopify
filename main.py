@@ -1,5 +1,7 @@
 from libs.custom_log import getLogger
-from credentials import Angel
+from credentials import access_token
+import libs.tiendaAngel
 
 logger = getLogger('Shopify')
-print(Angel['access_token'])
+
+print(libs.tiendaAngel.getShopInfo(access_token))
