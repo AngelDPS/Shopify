@@ -3,7 +3,7 @@
 Se utiliza la mutación 
 ## [articleCreate(input: ProductInput!, media: [CreateMediaInput!])](https://shopify.dev/docs/api/admin-graphql/2023-01/mutations/productCreate)
 
-Todos los campos son opcionales. En la siguiente lista se establecen campos de _baja prioridad_ y ~~depreciados~~, o **irrelevantes para crear artículos**.
+Todos los campos son opcionales. En la siguiente lista se establecen campos de _baja prioridad_ y ~~depreciados~~, o **irrelevantes para crear** productos.
 
 
 * ProductInput
@@ -14,10 +14,6 @@ Todos los campos son opcionales. En la siguiente lista se establecen campos de _
     - descriptionHtml: String
 
         Descripción del producto en formato HTML.
-
-    - vendor: String
-
-        Información sobre el proveedor del producto.
 
     - productType: String
 
@@ -35,45 +31,14 @@ Todos los campos son opcionales. En la siguiente lista se establecen campos de _
 
         Etiquetas para clasificar el producto.
 
+    - vendor: String
+
+        Información sobre el proveedor del producto.
+
     - variants: [ProductVariantInput!]
 
         Información pertinente a las variantes del producto. Es aquí donde se establece el precio además de datos como el precio, código de barras, SKU, existencia en inventario, entre otros.
 
-        + price: Money
-        + compareAtPrice: Money
-        + barcode: String
-        + sku: String
-        + position: Int
-        + requiresShipping: Boolean
-        + weight: Float
-        + weightUnit: WeightUnit
-        + inventoryQuantities: [InventoryLevelInput!]
-            * availableQuantity: Int!
-            * locationId: ID!
-        + inventoryItem: InventoryItemInput
-            * cost: Decimal
-
-                Costo de producción del producto. Distinto del precio.
-
-            * tracked: Boolean
-        + _inventoryPolicy: ProductVariantInventoryPolicy_
-
-            Indica si los compradores pueden poner ordenes de compra en caso de que el producto esté agotado.
-
-        + _imageId: ID_
-        + _imageSrc: String_
-        + _mediaSrc: [String!]_
-        + _metafields: [MetafieldInput!]_
-        + _privateMetafields: [PrivateMetafieldInput!]_
-        + _options: [String!]_
-        + _taxCode: String_
-        + _taxable: Boolean_
-        + _harmonizedSystemCode: String_
-        + **id: ID**
-        + **productId: ID**
-        + ~~title: String~~
-        + ~~fulfillmentServiceId: ID~~
-        + ~~inventoryManagement: ProductVariantInventoryManagement~~
     - _images: [ImageInput!]_
         + altText: String
         + id: ID
@@ -81,6 +46,9 @@ Todos los campos son opcionales. En la siguiente lista se establecen campos de _
     - _seo: SEOInput_
         + description: String
         + title: String
+
+        Información personalizada para presentar como resultado en los motores de búsqueda.
+
     - _productCategory: ProductCategoryInput_
         + productTaxonomyNodeId: ID!
 
@@ -98,6 +66,9 @@ Todos los campos son opcionales. En la siguiente lista se establecen campos de _
     - _giftCard_: Boolean
     - _giftCardTemplateSuffix_: String
     - _metafields_: [MetafieldInput!]
+
+        Los metacampos permiten guardar información especializada del tipo `key: value` de forma personalizada.
+
     - _privateMetafields_: [PrivateMetafieldInput!]
     - _options_: [String!]
     - **collectionsToLeave: [ID!]**
@@ -114,6 +85,93 @@ Todos los campos son opcionales. En la siguiente lista se establecen campos de _
     - alt: String
     - mediaContentType: MediaContentType!
     - originalSource: String!
+
+
+### Las variantes de un producto
+
+En las variantes de los productos es que se establece información detallada de cada producto. Además que permite establecer opciones distintas para una sola familia de productos, como la talla o el color.
+
+Los campos de `ProductVariantInput`
+
++ price: Money
+
+    El precio del producto, de tipo str, sin símbolo de moneda o código.
+    La moneda a usar corresponde a la establecida a usar en la configuración de la tienda.
+
++ compareAtPrice: Money
+
+    Precio de comparación a mostrar en tienda. Al comprador se le muestra como un precio tachado, al lado del actual precio de venta.
+
++ barcode: String
+
+    Valor asociado al código de barras del producto.
+
++ sku: String
+
+    Código de referencia del producto para inventariado.
+
++ position: Int
+
+    El orden en el que se muestra la variante dentro de la lista de variantes del producto. La primera posición es la 1.
+
++ requiresShipping: Boolean
+
+    Si el producto require de envío.
+
++ weight: Float
+
+    Valór numérico del peso del producto.
+
++ weightUnit: WeightUnit
+
+    La unidad de medida del peso, con valores aceptados de:
+
+    * GRAMS
+    * KILOGRAMS
+    * OUNCES
+    * POUNDS
++ inventoryQuantities: [InventoryLevelInput!]
+    * availableQuantity: Int!
+
+        La cantidad disponible de un ítem del inventario en una sucursal.
+
+    * locationId: ID!
+
+        El ID de la sucursal.
+    
++ inventoryItem: InventoryItemInput
+    * cost: Decimal
+
+        Costo de producción del producto. Distinto del precio de venta.
+
+    * tracked: Boolean
++ _inventoryPolicy: ProductVariantInventoryPolicy_
+
+    Indica si los compradores pueden poner ordenes de compra en caso de que el producto esté agotado.
+    Los valores aceptados son:
+
+    * CONTINUE
+
+    Los compradores pueden comprar este producto después de quedar sin disponibilidad en inventario.
+
+    * DENY
+
+    Los compradores no pueden comprar este producto después de agotarse su existencia.
+
++ _imageId: ID_
++ _imageSrc: String_
++ _mediaSrc: [String!]_
++ _metafields: [MetafieldInput!]_
++ _privateMetafields: [PrivateMetafieldInput!]_
++ _options: [String!]_
++ _taxCode: String_
++ _taxable: Boolean_
++ _harmonizedSystemCode: String_
++ **id: ID**
++ **productId: ID**
++ ~~title: String~~
++ ~~fulfillmentServiceId: ID~~
++ ~~inventoryManagement: ProductVariantInventoryManagement~~
 
 
 # Para modificar artículos.
