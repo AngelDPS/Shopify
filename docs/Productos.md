@@ -1,7 +1,7 @@
 # Para crear artículos
 
 Se utiliza la mutación 
-## [articleCreate(input: ProductInput!, media: [CreateMediaInput!])](https://shopify.dev/docs/api/admin-graphql/2023-01/mutations/productCreate)
+## [productCreate(input: ProductInput!, media: [CreateMediaInput!])](https://shopify.dev/docs/api/admin-graphql/2023-01/mutations/productCreate)
 
 Todos los campos son opcionales. En la siguiente lista se establecen campos de _baja prioridad_ y ~~depreciados~~, o **irrelevantes para crear** productos.
 
@@ -93,6 +93,10 @@ En las variantes de los productos es que se establece información detallada de 
 
 Los campos de `ProductVariantInput`
 
++ options: [String!]
+
+    Las propiedades personalizadas que el dueño de la tienda usa para defininir las variantes de un producto. De este campo se deduce el título de la variante.
+
 + price: Money
 
     El precio del producto, de tipo str, sin símbolo de moneda o código.
@@ -163,7 +167,6 @@ Los campos de `ProductVariantInput`
 + _mediaSrc: [String!]_
 + _metafields: [MetafieldInput!]_
 + _privateMetafields: [PrivateMetafieldInput!]_
-+ _options: [String!]_
 + _taxCode: String_
 + _taxable: Boolean_
 + _harmonizedSystemCode: String_
