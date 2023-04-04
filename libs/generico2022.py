@@ -1,14 +1,17 @@
 import logging
 from gql import Client, gql
 from gql.transport.requests import RequestsHTTPTransport
+from handlers.sucursalHandler import SucursalInput
 
 logger = logging.getLogger('Shopify.generico2022')
 
 
 class Generico2022:
-    shop = 'generico2022-8056'
-    api_version = '2023-01'
-    url = f'https://{shop}.myshopify.com/admin/api/{api_version}/graphql.json'
+    shop: str = 'generico2022-8056'
+    api_version: str = '2023-01'
+    url: str = f'https://{shop}.myshopify.com/admin/api/{api_version}/graphql.json'
+    client: Client
+    sucursales: dict = {}
 
     def __init__(self, access_token: str):
         transport = RequestsHTTPTransport(url=self.url, 
@@ -29,37 +32,41 @@ class Generico2022:
         return self.client.execute(query)
 
 
-    def crearSucursal(access_token: str, 
-                      country_code: str,
-                      address1: str = '', 
-                      city: str = '',
-                      province_code: str = '',
-                      zip_code: str = '',
-                      fulfillsOnlineOrders: bool = '',
-                      name: str = '') -> dict:
-        with shopify.Session.temp(url, api_version, access_token):
-            query_str = '''
-                mutation locationAdd($input: LocationAddInput!) {
-                    locationAdd(input: $input) {
-                        location {
-                            id
-                        }
+    def crearSucursal(self,
+                      nombre: str, 
+                      codigoPais: str,
+                      atiendeOrdenes: bool = None, 
+                      provincia: str = None,
+                      ciudad: str = None,
+                      direccion1: str = None,
+                      direccion2: str = None,
+                      telefono: str = None,
+                      codigoPostal: str = None) -> dict:
+
+        input = SucursalInput(nombre=nombre, 
+                              codigoPais=codigoPais, 
+                              atiendeOrdenes=atiendeOrdenes,
+                              provincia=provincia,
+                              ciudad=ciudad,
+                              direccion1=direccion1,
+                              direccion2=direccion2,
+                              telefono=telefono,
+                              codigoPostal=codigoPostal)
+
+        input = {
+            'input': input.sucursalInput.dict()
+        }
+        
+        query = gql('''
+            mutation LocationAdd($input: LocationAddInput!) {
+                locationAdd(input: $input) {
+                    location {
+                        id
                     }
                 }
-            '''
-            variables = {
-                'input': {
-                    'address': {
-                        'address1': address1,
-                        'city': city,
-                        'countryCode': country_code,
-                        'provinceCode': province_code,
-                        'zip': zip_code
-                    },
-                    'fulfillsOnlineOrders': fulfillsOnlineOrders,
-                    'name': name
-                }
             }
+        ''')
 
-            return shopify.GraphQL().execute(query=query_str, 
-                                            variables=variables) 
+        respuesta = self.client.execute(query, variable_values=input) 
+        self.sucursales[nombre] = respuesta['locationAdd']['location']['id']
+        return self.sucursales[nombre]
