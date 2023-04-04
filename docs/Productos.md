@@ -270,7 +270,7 @@ Cambia el estado de disponibilidad del producto según el str productStatus:
 
 ### [stagedUploadsCreate(input:[StagedUploadInput!]!)](https://shopify.dev/docs/api/admin-graphql/2023-01/mutations/stagedUploadsCreate)
 
-Para un mejor entendimiento sobre cómo subir media a Shopify y administrarla en los productos creados, se recomienda el tutorial [enlazado](https://shopify.dev/docs/apps/online-store/media/products#step-1-upload-media-to-shopify).
+Para un mejor entendimiento sobre cómo subir media a Shopify y administrarla en los productos creados, se recomienda el tutorial [enlazado](https://shopify.dev/docs/apps/online-store/media/products).
 
 # Para eliminar artículos.
 
