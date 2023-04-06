@@ -174,7 +174,7 @@ CollectionRuleSetInput:
   + condition: String!
   + conditionObjectId: ID
 
-    EL ID del objeto que apunta a los atributos adiciones para la regla de la colección. Esto sólo es requerido cuando se usan reglas de definiciones de metacampos.
+    EL ID del objeto que apunta a los atributos adicionales para la regla de la colección. Esto sólo es requerido cuando se usan reglas de definiciones de metacampos.
 
   + relation: CollectionRuleRelation!
 

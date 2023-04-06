@@ -1,7 +1,7 @@
 import logging
 from gql import Client, gql
 from gql.transport.requests import RequestsHTTPTransport
-from handlers.sucursalHandler import SucursalInput
+from handlers.sucursalInputHandler import SucursalInput
 
 logger = logging.getLogger('Shopify.generico2022')
 
