@@ -11,11 +11,13 @@ def infoTienda():
 
 
 def crearSucursalPrueba():
-    tienda.crearSucursal(nombre='Sucursal de prueba', codigoPais='VE', 
-                         atiendeOrdenes=True, ciudad='Valencia', 
-                         direccion1='Av. Bolívar Norte', direccion2='Torre Banaven', 
-                         codigoPostal='2001', provincia='VE-G', 
-                         telefono='+584145834842')
+    tienda.crearSucursal(
+        nombre='Sucursal de prueba', codigoPais='VE',
+        atiendeOrdenes=True, ciudad='Valencia',
+        direccion1='Av. Bolívar Norte',
+        direccion2='Torre Banaven',
+        codigoPostal='2001', provincia='VE-G',
+        telefono='+584145834842')
     return tienda.sucursales
 
 

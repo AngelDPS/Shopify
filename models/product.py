@@ -1,8 +1,8 @@
 from pydantic import BaseModel
 from misc import (
-    MimageInput, 
-    MSEOInput, 
-    MmetafieldInput, 
+    MimageInput,
+    MSEOInput,
+    MmetafieldInput,
     MprivateMetafieldInput,
     MproductStatus
 )

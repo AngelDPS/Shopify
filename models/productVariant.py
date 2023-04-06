@@ -10,6 +10,13 @@ from misc import (
 )
 
 
+class _MweightUnit(str, Enum):
+    GRAMS = "GRAMS"
+    KILOGRAMS = "KILOGRAMS"
+    OUNCES = "OUNCES"
+    POUNDS = "POUNDS"
+
+
 class MproductVariantInput(BaseModel):
     options: [str] | None = None
     price: Decimal | None = None
@@ -33,10 +40,3 @@ class MproductVariantInput(BaseModel):
     harmonizedSystemCode: str | None = None
     id: str | None = None
     productId: str | None = None
-
-
-class _MweightUnit(str, Enum):
-    GRAMS = "GRAMS"
-    KILOGRAMS = "KILOGRAMS"
-    OUNCES = "OUNCES"
-    POUNDS = "POUNDS"
