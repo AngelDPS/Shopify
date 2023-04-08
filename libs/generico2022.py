@@ -14,10 +14,10 @@ class Generico2022:
     sucursales: dict = {}
 
     def __init__(self, access_token: str):
-        transport = RequestsHTTPTransport(url=self.url, 
+        transport = RequestsHTTPTransport(url=self.url,
                                           headers={'X-Shopify-Access-Token': access_token})
-        self.client = Client(transport=transport, fetch_schema_from_transport=True)
-
+        self.client = Client(transport=transport,
+                             fetch_schema_from_transport=True)
 
     @property
     def get_info(self) -> dict:
@@ -31,11 +31,10 @@ class Generico2022:
         ''')
         return self.client.execute(query)
 
-
     def crearSucursal(self,
-                      nombre: str, 
+                      nombre: str,
                       codigoPais: str,
-                      atiendeOrdenes: bool = None, 
+                      atiendeOrdenes: bool = None,
                       provincia: str = None,
                       ciudad: str = None,
                       direccion1: str = None,
@@ -43,8 +42,8 @@ class Generico2022:
                       telefono: str = None,
                       codigoPostal: str = None) -> dict:
 
-        input = SucursalInput(nombre=nombre, 
-                              codigoPais=codigoPais, 
+        input = SucursalInput(nombre=nombre,
+                              codigoPais=codigoPais,
                               atiendeOrdenes=atiendeOrdenes,
                               provincia=provincia,
                               ciudad=ciudad,
@@ -56,7 +55,7 @@ class Generico2022:
         input = {
             'input': input.sucursalInput.dict()
         }
-        
+
         query = gql('''
             mutation LocationAdd($input: LocationAddInput!) {
                 locationAdd(input: $input) {
@@ -67,6 +66,6 @@ class Generico2022:
             }
         ''')
 
-        respuesta = self.client.execute(query, variable_values=input) 
+        respuesta = self.client.execute(query, variable_values=input)
         self.sucursales[nombre] = respuesta['locationAdd']['location']['id']
         return self.sucursales[nombre]

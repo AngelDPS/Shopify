@@ -1,0 +1,6 @@
+query {
+    shop {
+        name
+        id
+    }
+}

@@ -3,3 +3,4 @@ TODO
 .env*
 logs*
 *__pycache__*
+.graphqlrc*

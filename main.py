@@ -1,29 +1,39 @@
 from libs.custom_log import getLogger
-from credentials import access_token
-from libs.generico2022 import Generico2022
+from libs.conexion import ConexionShopify
+from handlers.sucursalHandler import Sucursal
 
 logger = getLogger('Shopify')
-tienda = Generico2022(access_token=access_token)
+conexion = ConexionShopify()
 
 
 def infoTienda():
-    return tienda.get_info
+    with open('graphql/Info.graphql', 'r') as query:
+        return conexion.enviarConsulta(query.read())
 
 
 def crearSucursalPrueba():
-    tienda.crearSucursal(
-        nombre='Sucursal de prueba', codigoPais='VE',
-        atiendeOrdenes=True, ciudad='Valencia',
-        direccion1='Av. Bolívar Norte',
-        direccion2='Torre Banaven',
-        codigoPostal='2001', provincia='VE-G',
-        telefono='+584145834842')
-    return tienda.sucursales
+    input = {
+        'name': 'Sucursal de prueba',
+        'fulfillsOnlineOrders': True,
+        'address': {
+            'countryCode': 'VE',
+            'city': 'Valencia',
+            'address1': 'Av. Bolívar Norte',
+            'address2': 'Torre Banaven',
+            'zip': '2001',
+            'provinceCode': 'VE-G',
+            'phone': '+584145834842'
+        }
+    }
+    s = Sucursal(conexion=conexion, input=input)
+    return s
 
 
 def main():
-    sucursales = crearSucursalPrueba()
-    print(sucursales)
+    s = crearSucursalPrueba()
+    print(s.ID, s.NOMBRE)
+    s.eliminar()
+    print(s.ID, s.NOMBRE)
 
 
 if __name__ == '__main__':
