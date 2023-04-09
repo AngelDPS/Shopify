@@ -9,7 +9,7 @@ with open('graphql/sucursal.graphql') as file:
 
 class Sucursal:
     logger = logging.getLogger("Shopify.sucursalHandler.Sucursal")
-    conexion: ConexionShopify
+    conexion = ConexionShopify()
     ID: str
     nombre: str
     direccion: str
@@ -20,7 +20,7 @@ class Sucursal:
 
         Args:
             respuesta (dict): diccionario con la información correspondiente.
-            Debe de reemplazarse por un modelo de respuesta apropiado.
+            TODO: Debe de reemplazarse por un modelo de respuesta apropiado.
         """
         self.nombre = respuesta['location']['name']
         self.ID = respuesta['location']['id']
@@ -42,11 +42,11 @@ class Sucursal:
         if id:
             try:
                 respuesta = self.conexion.enviarConsulta(
-                    self.queries,
+                    queries,
                     variables={'ID': id},
                     operacion='consultarSucursal'
                 )
-                if not respuesta['location']:
+                if not respuesta['collection']:
                     raise ValueError(
                         "El ID proporcionado no corresponde a una sucursal "
                         "existente"

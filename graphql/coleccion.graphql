@@ -1,0 +1,72 @@
+query consultarColeccion($id: ID!) {
+    collection(id: $id) {
+        ... coleccionInfo
+    }
+}
+
+
+mutation crearColeccion($input: CollectionInput!) {
+  collectionCreate(input: $input) {
+    collection {
+      ... coleccionInfo
+    }
+    userErrors {
+        field
+        message
+    }
+  }
+}
+
+
+mutation publicarColeccion($id: ID!) {
+    publishablePublish(id: $id, input: [
+        {
+            publicationId: "gid://shopify/Publication/130688713002"
+        },{
+            publicationId: "gid://shopify/Publication/130688778538"
+        }
+    ]) {
+        userErrors {
+            field
+            message
+        }
+    }
+}
+
+
+mutation modificarColeccion($input: CollectionInput!) {
+    collectionUpdate(input: $input) {
+        collection {
+            ... coleccionInfo
+        }
+    }
+}
+
+
+mutation agregarProductos($id: ID!, $productIds: [ID!]!) {
+    collectionAddProductsV2(id: $id, productIds: $productIds)
+    {
+        job {
+            done
+        }
+    }
+}
+
+
+mutation eliminarColeccion($id: ID!) {
+    collectionDelete(input: {id: $id}) {
+        deletedCollectionId
+        userErrors {
+            field
+            message
+        }
+    }
+}
+
+
+fragment coleccionInfo on Collection {
+    title
+    id
+    description
+    productsCount
+}

@@ -58,7 +58,6 @@ class MprivateMetafieldInput(BaseModel):
 
 
 class MmetafieldInput(BaseModel):
-    description: str | None = None
     id: str | None = None
     key: str | None = None
     namespace: str | None = None

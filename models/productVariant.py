@@ -18,7 +18,7 @@ class _MweightUnit(str, Enum):
 
 
 class MproductVariantInput(BaseModel):
-    options: [str] | None = None
+    options: list[str] | None = None
     price: Decimal | None = None
     compareAtPrice: Decimal | None = None
     barcode: str | None = None
@@ -32,9 +32,9 @@ class MproductVariantInput(BaseModel):
     inventoryPolicy: MproductVariantInventoryPolicy | None = None
     imageSrc: str | None = None
     imageId: str | None = None
-    mediaSrc: [str] | None = None
-    metafields: [MmetafieldInput] | None = None
-    privateMetafields: [MprivateMetafieldInput] | None = None
+    mediaSrc: list[str] | None = None
+    metafields: list[MmetafieldInput] | None = None
+    privateMetafields: list[MprivateMetafieldInput] | None = None
     taxCode: str | None = None
     taxable: bool | None = None
     harmonizedSystemCode: str | None = None

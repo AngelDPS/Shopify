@@ -1,14 +1,14 @@
 from libs.custom_log import getLogger
 from libs.conexion import ConexionShopify
 from handlers.sucursalHandler import Sucursal
+from handlers.collectionHandler import Coleccion
 
 logger = getLogger('Shopify')
-conexion = ConexionShopify()
 
 
 def infoTienda():
     with open('graphql/Info.graphql', 'r') as query:
-        return conexion.enviarConsulta(query.read())
+        return ConexionShopify().enviarConsulta(query.read())
 
 
 def crearSucursalPrueba():
@@ -25,15 +25,26 @@ def crearSucursalPrueba():
             'phone': '+584145834842'
         }
     }
-    s = Sucursal(conexion=conexion, input=input)
+    s = Sucursal(input=input)
     return s
 
 
+def accerderColeccion(id: str = "gid://shopify/Collection/441266503978") -> Coleccion:
+    return Coleccion(id=id)
+
+
+def crearColeccionPrueba():
+    input = {
+        'title': 'Creada desde python',
+        'descriptionHtml': 'Colección de prueba creada desde <b>python</b>.',
+        'sortOrder': 'ALPHA_ASC'
+    }
+    return Coleccion(input=input)
+
+
 def main():
-    s = crearSucursalPrueba()
-    print(s.ID, s.NOMBRE)
-    s.eliminar()
-    print(s.ID, s.NOMBRE)
+    c = crearColeccionPrueba()
+    print(c)
 
 
 if __name__ == '__main__':

@@ -13,6 +13,16 @@ mutation crearSucursal($input: LocationAddInput!) {
                 }
             }
 
+
+mutation modificarSucursal($locationId: ID!, $input: LocationEditInput!) {
+    locationEdit(id: $locationId, input: $input) {
+        location {
+            ... SucursalInfo
+        }
+    }
+}
+
+
 mutation eliminarSucursal($locationId: ID!, $alternateLocationID: ID) {
     locationDeactivate(locationId: $locationId, destinationLocationId: $alternateLocationID){
         location {
@@ -21,14 +31,6 @@ mutation eliminarSucursal($locationId: ID!, $alternateLocationID: ID) {
     }
     locationDelete(locationId: $locationId) {
         deletedLocationId
-    }
-}
-
-mutation modificarSucursal($locationId: ID!, $input: LocationEditInput!) {
-    locationEdit(id: $locationId, input: $input) {
-        location {
-            ... SucursalInfo
-        }
     }
 }
 
