@@ -34,10 +34,9 @@ class Sucursal:
         del self.ID
         del self.direccion
 
-    def __init__(self, conexion: ConexionShopify, input: dict = None,
+    def __init__(self, input: dict = None,
                  id: str = None):
         self.logger.info("Creando instancia de sucursal")
-        self.conexion = conexion
 
         if id:
             try:
@@ -63,7 +62,8 @@ class Sucursal:
                 respuesta = self.conexion.enviarConsulta(
                     queries,
                     variables={
-                        'input': MsucursalInput.parse_obj(input).dict()
+                        'input': (MsucursalInput.parse_obj(input)
+                                  .dict(exclude_none=True))
                     },
                     operacion='crearSucursal'
                 )
@@ -83,13 +83,17 @@ class Sucursal:
             self.logger.exception(msg, stack_info=True)
             raise Exception(msg)
 
+    def __str__(self):
+        return f'Sucursal "{self.nombre}" con ID: "{self.ID}"'
+
     def modificar(self, input: dict):
         try:
             respuesta = self.conexion.enviarConsulta(
                 queries,
                 variables={
                     'locationId': self.ID,
-                    'input': MsucursalInput.parse_obj(input).dict()
+                    'input': (MsucursalInput.parse_obj(input)
+                              .dict(exclude_none=True))
                 },
                 operacion='modificarSucursal'
             )
@@ -102,21 +106,15 @@ class Sucursal:
 
     def eliminar(self, sucursalAlt=None):
         self.logger.info(f'Eliminando la sucursal "{self.NOMBRE = }"')
-        if sucursalAlt:
-            variables = {
-                'locationId': self.ID,
-                'alternateLocationId': sucursalAlt.ID
-            }
-        else:
-            variables = {
-                'locationId': self.ID,
-                'alternateLocationId': sucursalAlt
-            }
 
         try:
             respuesta = self.conexion.enviarConsulta(
                 queries,
-                variables=variables,
+                variables={
+                    'locationId': self.ID,
+                    'alternateLocationId': (
+                        sucursalAlt.ID if sucursalAlt else None)
+                },
                 operacion='eliminarSucursal'
             )
         except Exception:
