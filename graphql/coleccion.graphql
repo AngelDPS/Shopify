@@ -27,7 +27,6 @@ mutation publicarColeccion($id: ID!) {
         }
     ]) {
         userErrors {
-            field
             message
         }
     }
@@ -39,6 +38,9 @@ mutation modificarColeccion($input: CollectionInput!) {
         collection {
             ... coleccionInfo
         }
+        userErrors {
+        message
+        }
     }
 }
 
@@ -49,6 +51,9 @@ mutation agregarProductos($id: ID!, $productIds: [ID!]!) {
         job {
             done
         }
+        userErrors {
+            message
+        }
     }
 }
 
@@ -57,7 +62,6 @@ mutation eliminarColeccion($id: ID!) {
     collectionDelete(input: {id: $id}) {
         deletedCollectionId
         userErrors {
-            field
             message
         }
     }

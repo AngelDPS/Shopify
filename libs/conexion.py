@@ -1,13 +1,12 @@
 import logging
-from gql import Client, gql
+from gql import Client
 from gql.transport.requests import RequestsHTTPTransport
 from gql.transport.exceptions import (
     TransportQueryError,
     TransportServerError
 )
+from graphql.language.ast import DocumentNode
 from credentials import shop, access_token
-
-logger = logging.getLogger("Shopify.conexion")
 
 
 class ConexionShopify:
@@ -19,7 +18,7 @@ class ConexionShopify:
     cliente: Client
 
     def __init__(self):
-        self.logger = logging.getLogger("Shopify.conexion.Conexion")
+        self.logger = logging.getLogger("Shopify.Conexion")
         self.logger.info("Creando una instancia de Conexión")
 
         transport = RequestsHTTPTransport(
@@ -34,14 +33,13 @@ class ConexionShopify:
         )
 
     def enviarConsulta(self,
-                       consultaStr: str,
+                       request: DocumentNode,
                        variables: dict = None,
                        operacion: str = None
                        ) -> dict:
         try:
-            query_doc = gql(consultaStr)
             self.respuesta = self.cliente.execute(
-                query_doc,
+                request,
                 variable_values=variables,
                 operation_name=operacion
             )

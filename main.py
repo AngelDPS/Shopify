@@ -43,8 +43,8 @@ def crearColeccionPrueba():
 
 
 def main():
-    c = crearColeccionPrueba()
-    print(c)
+    s = crearColeccionPrueba()
+    print(s)
 
 
 if __name__ == '__main__':
