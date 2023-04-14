@@ -1,5 +1,5 @@
 import logging
-from models.collection import McollectionInput
+from models.coleccion import McollectionInput
 from handlers.shopifyObject import ShopifyObject
 
 
