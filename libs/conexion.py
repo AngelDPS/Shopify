@@ -6,24 +6,25 @@ from gql.transport.exceptions import (
     TransportServerError
 )
 from graphql.language.ast import DocumentNode
-from credentials import shop, access_token
 
 
 class ConexionShopify:
-    _ACCESS_TOKEN: str = access_token
-    SHOP: str = shop
+    _access_token: str
+    shop: str
     API_VERSION: str = "2023-04"
-    URL: str = (f"https://{SHOP}.myshopify.com/admin/api/"
-                f"{API_VERSION}/graphql.json")
     cliente: Client
 
-    def __init__(self):
+    def __init__(self, shopifyConfig: dict):
+        self.shop = shopifyConfig['tienda']
+        self._access_token = shopifyConfig['access_token']
+        self.URL: str = (f"https://{self.shop}.myshopify.com/admin/api/"
+                         f"{self.API_VERSION}/graphql.json")
         self.logger = logging.getLogger("Shopify.Conexion")
         self.logger.info("Creando una instancia de Conexión")
 
         transport = RequestsHTTPTransport(
             self.URL,
-            headers={'X-Shopify-Access-Token': self._ACCESS_TOKEN},
+            headers={'X-Shopify-Access-Token': self._access_token},
             retries=3,
         )
 

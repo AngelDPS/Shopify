@@ -1,7 +1,7 @@
 from pydantic import BaseModel, NonNegativeInt
 from decimal import Decimal
-from enum import Enum
-from misc import (
+from typing import Literal
+from models.misc import (
     MinventoryLevelInput,
     MinventoryItemInput,
     MproductVariantInventoryPolicy,
@@ -10,11 +10,7 @@ from misc import (
 )
 
 
-class _MweightUnit(str, Enum):
-    GRAMS = "GRAMS"
-    KILOGRAMS = "KILOGRAMS"
-    OUNCES = "OUNCES"
-    POUNDS = "POUNDS"
+WeightUnit = Literal["GRAMS", "KILOGRAMS", "OUNCES", "POUNDS"]
 
 
 class MproductVariantInput(BaseModel):
@@ -26,8 +22,8 @@ class MproductVariantInput(BaseModel):
     position: NonNegativeInt | None = None
     requiresShipping: bool | None = None
     weight: Decimal | None = None
-    weightUnit: _MweightUnit | None = None
-    inventoryQuantities: [MinventoryLevelInput] | None = None
+    weightUnit: WeightUnit | None = None
+    inventoryQuantities: list[MinventoryLevelInput] | None = None
     inventoryItem: MinventoryItemInput | None = None
     inventoryPolicy: MproductVariantInventoryPolicy | None = None
     imageSrc: str | None = None

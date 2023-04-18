@@ -1,0 +1,48 @@
+query consultar($id: ID!) {
+    product(id: $id) {
+        ... ProductoInfo
+    }
+}
+
+mutation crear($input: ProductInput!, $media: [CreateMediaInput!]) {
+    productCreate(input: $input, media: $media) {
+        product {
+            ... ProductoInfo
+        }
+        userErrors {
+            message
+        }
+    }
+}
+
+mutation modificar($input: ProductInput!) {
+    productUpdate(input: $input) {
+        product {
+            ... ProductoInfo
+        }
+        userErrors {
+            message
+        }
+    }
+}
+
+mutation eliminar($id: ID!) {
+    productDelete(input: {id: $id}) {
+        userErrors {
+            message
+        }
+    }
+}
+
+fragment ProductoInfo on Product {
+    id
+    productType
+    status
+    title
+    variants(first: 1) {
+        nodes {
+            id
+            price
+        }
+    }
+}

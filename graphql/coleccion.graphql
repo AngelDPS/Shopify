@@ -73,4 +73,5 @@ fragment coleccionInfo on Collection {
     id
     description
     productsCount
+    updatedAt
 }

@@ -1,5 +1,67 @@
 from gql import gql
 
+producto = gql(
+    """
+    query consultar($id: ID!) {
+        product(id: $id) {
+            ... ProductoInfo
+        }
+    }
+
+    mutation crear($input: ProductInput!, $media: [CreateMediaInput!]) {
+        productCreate(input: $input, media: $media) {
+            product {
+                ... ProductoInfo
+            }
+            userErrors {
+                message
+            }
+        }
+    }
+
+    mutation modificar($input: ProductInput!) {
+        productUpdate(input: $input) {
+            product {
+                ... ProductoInfo
+            }
+            userErrors {
+                message
+            }
+        }
+    }
+
+    mutation modificarVarianteProducto($input: ProductVariantInput!) {
+        productVariantUpdate(input: $input) {
+            userErrors {
+                message
+            }
+        }
+    }
+
+
+    mutation eliminar($id: ID!) {
+        productDelete(input: {id: $id}) {
+            userErrors {
+                message
+            }
+        }
+    }
+
+    fragment ProductoInfo on Product {
+        id
+        productType
+        status
+        title
+        variants(first: 1) {
+            nodes {
+                id
+                price
+            }
+        }
+    }
+    """
+)
+
 coleccion = gql(
     """
     query consultar($id: ID!) {
@@ -138,7 +200,7 @@ sucursal = gql(
 
 misc = gql(
     """
-    mutation publicar($id: ID!, $input: [publicationInput!]!) {
+    mutation publicar($id: ID!, $input: [PublicationInput!]!) {
         publishablePublish(id: $id, input: $input) {
             userErrors {
                 field
@@ -147,7 +209,7 @@ misc = gql(
         }
     }
 
-    mutation ocultar($id: ID!, $input: [publicationInput!]!) {
+    mutation ocultar($id: ID!, $input: [PublicationInput!]!) {
         publishableUnpublish(id: $id, input: $input) {
             userErrors {
                 field

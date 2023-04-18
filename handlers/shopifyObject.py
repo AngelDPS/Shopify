@@ -3,8 +3,7 @@ import libs.gqlrequests
 from pydantic import BaseModel
 from typing import Literal
 from libs.conexion import ConexionShopify
-
-logger = logging.getLogger("Shopify.object")
+from models.event import Mevent, MdynamoDB
 
 
 class ShopifyObject:
@@ -13,51 +12,36 @@ class ShopifyObject:
     _Type: Literal["producto", "coleccion", "sucursal"]
     ID: str
 
-    def _establecerModelo(self, Modelo: BaseModel):
-        if issubclass(Modelo, BaseModel):
-            self.data = Modelo
-        else:
-            msg = "El 'Modelo' debe ser una subclase de pydantic.BaseModel"
-            self.logger.exception(msg)
-            raise TypeError(msg)
+    def establecerTipo(self, event: Mevent):
+        mapper = {
+            "articulos": "producto",
+            "lineas": "coleccion",
+            "tiendas": "sucursal"
+        }
+        self._Type = mapper[event.dynamodb.NewImage.entity]
 
-    def _establecerConexion(self):
+    def _establecerConexion(self, config: dict):
         try:
-            self.conexion = ConexionShopify()
+            self.conexion = ConexionShopify(config)
         except Exception as err:
             self.logger.exception(err)
             raise
-
-    def _actualizarDatos(self, respuesta: dict):
-        """Actualiza los atributos de la instancia a los valores
-        obtenidos de Shopify
-
-        Args:
-            respuesta (dict): diccionario con la información correspondiente.
-            TODO: Debe de reemplazarse por un modelo de respuesta apropiado.
-        """
-        # self.data.parse_obj(respuesta)
-        pass
-
-    def _borrarDatos(self):
-        """Elimina los atributos de la instancia en el momento en que se
-        elimina la sucursal en Shopify.
-        """
-        del self.data
-        del self.ID
 
     def __str__(self):
         return f"{self._Type.capitalize()}:\n{self.data.json()}"
 
     def _request(self, operacion: str, variables: dict = None) -> dict:
+        self.logger.debug(variables)
         respuesta = (self.conexion.enviarConsulta(
             getattr(libs.gqlrequests, self._Type),
             variables=variables,
             operacion=operacion))
         respuesta = respuesta[list(respuesta)[0]]
         if respuesta.get("userErrors"):
-            raise RuntimeError("No fue posible realizar la operación:\m"
-                               f"{respuesta['userErrors']}")
+            msg = ("No fue posible realizar la operación:\n"
+                   f"{respuesta['userErrors']}")
+            self.logger.exception(msg)
+            raise RuntimeError(msg)
         return respuesta
 
     def _consultar(self) -> dict:
@@ -80,18 +64,19 @@ class ShopifyObject:
             )
             raise
 
-    def _crear(self, input: BaseModel) -> dict:
+    def _crear(self, input: BaseModel, **kwargs) -> dict:
         try:
+            self.logger.debug(input)
             respuesta = self._request(
                 "crear",
                 variables={
-                    'input': input.dict(exclude_none=True)
+                    'input': input.dict(exclude_none=True),
+                    **kwargs
                 }
             )
             self.logger.info(f"{self._Type.capitalize()} "
                              "creado/a exitosamente.")
             self.logger.debug(respuesta)
-            self._actualizarDatos(respuesta)
             return respuesta
         except Exception:
             self.logger.exception(f"No fue posible crear el/la {self._Type}")
@@ -134,13 +119,13 @@ class ShopifyObject:
             self.logger.exception(f"No se pudo eliminar el/la {self._Type}.")
             raise
 
-    def _publicar(self, publicationIds: list[str]) -> dict:
+    def _publicar(self, id: str, publicationIds: list[str]) -> dict:
         try:
             respuesta = self.conexion.enviarConsulta(
                 libs.gqlrequests.misc,
                 operacion='publicar',
                 variables={
-                    'id': self.ID,
+                    'id': id,
                     'input': [{"publicationId": i} for i in publicationIds]
                 }
             )
@@ -167,3 +152,13 @@ class ShopifyObject:
         except Exception:
             self.logger.exception("No se pudo ocultar")
             raise
+
+    @staticmethod
+    def obtenerCambios(self, evento: Mevent) -> dict:
+        cambios = {
+            k: v for k, v in evento.dynamodb.NewImage
+            if (v != getattr(evento.dynamodb.OldImage, k) or
+                k == "entity")
+        }
+        self.logger.debug(cambios)
+        return MdynamoDB(NewImage=cambios).NewImage

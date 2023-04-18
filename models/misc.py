@@ -1,5 +1,5 @@
 from pydantic import BaseModel, NonNegativeInt, Field
-from enum import Enum
+from typing import Literal
 from decimal import Decimal
 
 
@@ -26,28 +26,21 @@ class MimageInput(BaseModel):
                             description="El URL de la imagen.")
 
 
-class _MmediaContentType(str, Enum):
-    EXTERNAL_VIDEO = "EXTERNAL_VIDEO"
-    IMAGE = "IMAGE"
-    MODEL_3D = "MODEL_3D"
-    VIDEO = "VIDEO"
+MediaContentType = Literal["EXTERNAL_VIDEO", "IMAGE", "MODEL_3D", "VIDEO"]
 
 
 class McreateMediaInput(BaseModel):
     alt: str | None = None
-    mediaContentType: _MmediaContentType
+    mediaContentType: MediaContentType
     originalSource: str
 
 
-class _MprivateMetafieldValueType(str, Enum):
-    INTEGER = "INTEGER"
-    JSON_STRING = "JSON_STRING"
-    STRING = "STRING"
+PrivateMetafieldValueType = Literal["INTEGER", "JSON_STRING", "STRING"]
 
 
 class _MprivateMetafieldValueInput(BaseModel):
     value: str
-    valueType: _MprivateMetafieldValueType
+    valueType: PrivateMetafieldValueType
 
 
 class MprivateMetafieldInput(BaseModel):
@@ -63,24 +56,3 @@ class MmetafieldInput(BaseModel):
     namespace: str | None = None
     type: str | None = None
     value: str | None = None
-
-
-class MproductStatus(str, Enum):
-    ACTIVE = "ACTIVE"
-    ARCHIVED = "ARCHIVED"
-    DRAFT = "DRAFT"
-
-
-class MinventoryLevelInput(BaseModel):
-    availableQuantity: NonNegativeInt
-    locationId: str
-
-
-class MinventoryItemInput(BaseModel):
-    cost: Decimal | None = None
-    tracked: bool | None = None
-
-
-class MproductVariantInventoryPolicy(str, Enum):
-    CONTINUE = "CONTINUE"
-    DENY = "DENY"

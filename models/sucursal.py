@@ -1,11 +1,11 @@
 from pydantic import BaseModel, Field, constr
 
 
-class _MsucursalAddress(BaseModel):
+class MsucursalAddress(BaseModel):
     """Información relacionada a la dirección de la sucursal
     """
     countryCode: constr(to_upper=True, curtail_length=2) = Field(
-        ..., title="Código del país",
+        "VE", title="Código del país",
         description="Código ISO 3166-1 alpha-2 del país.",
         min_length=2, max_length=2)
     provinceCode: constr(to_upper=True) | None = Field(
@@ -26,6 +26,7 @@ class _MsucursalAddress(BaseModel):
     phone: str | None = Field(
         None, title="Teléfono",
         description="Número telefónico para llamar a la sucursal.",
+        alias="telefono",
         max_length=15)
     zip: str | None = Field(None, title="Código postal",
                             description="Código zip o postal para enviar "
@@ -34,11 +35,16 @@ class _MsucursalAddress(BaseModel):
     class Config:
         title = "Dirección de sucursal"
         anystr_strip_whitespace = True
+        allow_population_by_field_name = True
 
 
 class MsucursalInput(BaseModel):
-    """Campos utilizados para añadir una sucursal a una tienda.
+    """Campos utilizados para añadir/modificar una sucursal a una tienda.
     """
-    address: _MsucursalAddress
-    name: constr(strip_whitespace=True)
-    fulfillsOnlineOrders: bool | None = None
+    address: MsucursalAddress | None
+    name: str | None = Field(None, alias='nombre')
+    fulfillsOnlineOrders: bool = True
+
+    class Config:
+        allow_population_by_field_name = True
+        anystr_strip_whitespace = True

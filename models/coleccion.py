@@ -58,7 +58,10 @@ class McollectionInput(BaseModel):
     """Campos utilizados para crear una colección en Shopify
     """
     title: str | None = Field(
-        None, title='Título', description="El nombre de la colección")
+        None,
+        title='Título',
+        alias='nombre',
+        description="El nombre de la colección")
     descriptionHtml: str | None = Field(
         None, title="Descripción en HTML",
         description="Descripción de la colección en formato HTML.")
@@ -95,3 +98,4 @@ class McollectionInput(BaseModel):
     class Config:
         title = "Parámetros para la creación de colecciónes."
         anystr_strip_whitespace = True
+        allow_population_by_field_name = True
