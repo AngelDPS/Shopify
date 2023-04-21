@@ -63,9 +63,10 @@ class Sucursal(ShopifyObject):
                         }
                     )
                 )
-                evento.gids['tiendas'][evento.data.NewImage.codigoTienda] = (
-                    respuesta['location']['id']
-                )
+                evento.gids = (evento.gids | {'tiendas': {
+                    evento.data.NewImage.codigoTienda:
+                        respuesta['location']['id']
+                }})
                 evento.actualizarBD()
             elif evento.cambios:
                 self.logger.info("Actualizando sucursal.")
@@ -87,11 +88,11 @@ class Sucursal(ShopifyObject):
                     True: self.activar,
                     False: self.desactivar
                 }[evento.cambios.habilitado](
-                        id=(evento.gids['tiendas']
-                            [evento.data.OldImage.codigoTienda]),
-                        altId=(evento.gids['tiendas']
-                               [evento.data.OldImage.codigoTiendaAlt])
-                    )
+                    id=(evento.gids['tiendas']
+                        [evento.data.OldImage.codigoTienda]),
+                    altId=(evento.gids['tiendas']
+                           [evento.data.OldImage.codigoTiendaAlt])
+                )
         except Exception:
             raise
 

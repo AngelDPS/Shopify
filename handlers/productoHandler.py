@@ -40,12 +40,15 @@ class Producto(ShopifyObject):
                 respuesta = self._crear(productInput)
                 self._publicar(respuesta['product']['id'],
                                evento.gids['publications'])
-                evento.gids['articulos'][evento.data.NewImage.co_art] = {
-                    'productId': respuesta['product']['id'],
-                    'variantId': (
-                        respuesta['product']['variants']['nodes'][0]['id']
-                    )
-                }
+
+                evento.gids = (evento.gids | {'articulos': {
+                    evento.data.NewImage.co_art: {
+                        'productId': respuesta['product']['id'],
+                        'variantId': (
+                            respuesta['product']['variants']['nodes'][0]['id']
+                        )
+                    }
+                }})
                 evento.actualizarBD()
             elif evento.cambios:
                 self.logger.info("Actualizando producto.")

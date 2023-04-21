@@ -21,13 +21,15 @@ class Coleccion(ShopifyObject):
                 )
                 self._publicar(self.respuesta["collection"]["id"],
                                evento.gids["publications"])
-                (evento.gids['lineas']
-                 [evento.data.NewImage.co_lin_padre]
-                    [evento.data.NewImage.co_lin]) = (
-                    self.respuesta['collection']['id']
-                )
+                
+                evento.gids = (evento.gids | {'lineas': {
+                    evento.data.NewImage.co_lin_padre: {
+                        evento.data.NewImage.co_lin:
+                            self.respuesta['collection']['id']
+                    }
+                }})
                 # TODO: Hector aqui se actualiza la BD.
-                self.actualizarBD()
+                evento.actualizarBD()
             elif evento.cambios:
                 self.logger.info("Actualizando colección.")
                 shopifyInput = McollectionInput.parse_obj(
