@@ -1,21 +1,13 @@
 from pydantic import Field, BaseModel as PydanticBaseModel
 from typing import Literal
 from decimal import Decimal
-from datetime import datetime
+# from datetime import datetime
 
 
 class BaseModel(PydanticBaseModel):
     class Config:
         allow_population_by_field_name = True
         anystr_strip_whitespace = True
-
-
-class MeventConfig(PydanticBaseModel):
-    precio: str | None = None
-    shopify: dict
-
-    class Config:
-        extra = "allow"
 
 
 class Marticulo(BaseModel):
@@ -35,8 +27,8 @@ class Marticulo(BaseModel):
     referencia: str | None = None
     marca: str | None
     habilitado: bool | None = None
-    created_at: datetime | None = None
-    updated_at: datetime | None = None
+    # created_at: datetime | None = None
+    # updated_at: datetime | None = None
 
 
 class Mlinea(BaseModel):
@@ -46,8 +38,8 @@ class Mlinea(BaseModel):
     co_lin: str | None = None
     co_lin_padre: str | None = None
     descuento: Decimal | None = None
-    created_at: datetime | None = None
-    updated_at: datetime | None = None
+    # created_at: datetime | None = None
+    # updated_at: datetime | None = None
 
 
 class Mtienda(BaseModel):
@@ -58,6 +50,7 @@ class Mtienda(BaseModel):
     habilitado: bool | None = None
     codigoCompania: str | None = None
     codigoTienda: str | None = None
+    codigoTiendaAlt: str | None = None
     # configuraciones:
     # correo
 
@@ -65,12 +58,6 @@ class Mtienda(BaseModel):
 Mimage = Marticulo | Mlinea | Mtienda
 
 
-class MdynamoDB(BaseModel):
+class Mevento(BaseModel):
     NewImage: Mimage = Field(..., discriminator='entity')
     OldImage: Mimage | None = Field(None, discriminator='entity')
-
-
-class Mevent(BaseModel):
-    eventName: Literal["INSERT", "MODIFY"]
-    dynamodb: MdynamoDB
-    config: MeventConfig

@@ -1,6 +1,5 @@
-from pydantic import BaseModel, NonNegativeInt, Field
+from pydantic import BaseModel, Field
 from typing import Literal
-from decimal import Decimal
 
 
 class MSEOInput(BaseModel):

@@ -1,38 +1,45 @@
 from libs.custom_log import getLogger
-from handlers.eventHandler import procesarEvento
+from handlers.eventoHandler import Evento
 import eventos
 
 getLogger('Shopify')
 
 
-def crearSucursal():
-    procesarEvento(eventos.TIENDA)
+def crearTienda():
+    Evento(eventos.TIENDA).procesar()
 
 
-def actualizarSucursal():
-    procesarEvento(eventos.TIENDA_act)
+def actualizarTienda():
+    Evento(eventos.TIENDA_act).procesar()
 
 
 def crearLinea():
-    procesarEvento(eventos.LINEA)
+    Evento(eventos.LINEA).procesar()
 
 
 def actualizarLinea():
-    procesarEvento(eventos.LINEA_act)
+    Evento(eventos.LINEA_act).procesar()
 
 
 def crearArticulo():
-    procesarEvento(eventos.ARTICULO)
+    Evento(eventos.ARTICULO).procesar()
 
 
 def actualizarArticulo():
-    procesarEvento(eventos.ARTICULO_act)
+    Evento(eventos.ARTICULO_act).procesar()
+
+
+def crearTodo():
+    crearTienda()
+    crearLinea()
+    crearArticulo()
+
+
+def actualizarTodo():
+    actualizarTienda()
+    actualizarLinea()
+    actualizarArticulo()
 
 
 if __name__ == '__main__':
-    crearSucursal()
     crearLinea()
-    crearArticulo()
-    actualizarSucursal()
-    actualizarLinea()
-    actualizarArticulo()

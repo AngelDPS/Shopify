@@ -2,13 +2,7 @@ from gql import gql
 
 producto = gql(
     """
-    query consultar($id: ID!) {
-        product(id: $id) {
-            ... ProductoInfo
-        }
-    }
-
-    mutation crear($input: ProductInput!, $media: [CreateMediaInput!]) {
+    mutation crearProducto($input: ProductInput!, $media: [CreateMediaInput!]) {
         productCreate(input: $input, media: $media) {
             product {
                 ... ProductoInfo
@@ -19,7 +13,7 @@ producto = gql(
         }
     }
 
-    mutation modificar($input: ProductInput!) {
+    mutation modificarProducto($input: ProductInput!) {
         productUpdate(input: $input) {
             product {
                 ... ProductoInfo
@@ -32,15 +26,6 @@ producto = gql(
 
     mutation modificarVarianteProducto($input: ProductVariantInput!) {
         productVariantUpdate(input: $input) {
-            userErrors {
-                message
-            }
-        }
-    }
-
-
-    mutation eliminar($id: ID!) {
-        productDelete(input: {id: $id}) {
             userErrors {
                 message
             }
@@ -64,13 +49,7 @@ producto = gql(
 
 coleccion = gql(
     """
-    query consultar($id: ID!) {
-        collection(id: $id) {
-            ... coleccionInfo
-        }
-    }
-
-    mutation crear($input: CollectionInput!) {
+    mutation crearColeccion($input: CollectionInput!) {
         collectionCreate(input: $input) {
             collection {
             ... coleccionInfo
@@ -82,7 +61,7 @@ coleccion = gql(
         }
     }
 
-    mutation modificar($input: CollectionInput!) {
+    mutation modificarColeccion($input: CollectionInput!) {
         collectionUpdate(input: $input) {
             collection {
                 ... coleccionInfo
@@ -90,15 +69,6 @@ coleccion = gql(
             userErrors {
             field
             message
-            }
-        }
-    }
-
-    mutation eliminar($id: ID!) {
-        collectionDelete(input: {id: $id}) {
-            userErrors {
-                field
-                message
             }
         }
     }
@@ -127,14 +97,7 @@ coleccion = gql(
 
 sucursal = gql(
     """
-    query consultar($id: ID) {
-        location(id: $id) {
-            ... SucursalInfo
-        }
-    }
-
-
-    mutation crear($input: LocationAddInput!) {
+    mutation crearSucursal($input: LocationAddInput!) {
         locationAdd(input: $input) {
             location{
                 ... SucursalInfo
@@ -145,8 +108,7 @@ sucursal = gql(
         }
     }
 
-
-    mutation modificar($id: ID!, $input: LocationEditInput!) {
+    mutation modificarSucursal($id: ID!, $input: LocationEditInput!) {
         locationEdit(id: $id, input: $input) {
             location {
                 ... SucursalInfo
@@ -157,15 +119,7 @@ sucursal = gql(
         }
     }
 
-    mutation eliminar($id: ID!) {
-        locationDelete(locationId: $id) {
-            locationDeleteUserErrors {
-                message
-            }
-        }
-    }
-
-    mutation activar($id: ID!) {
+    mutation activarSucursal($id: ID!) {
         locationActivate(locationId: $id) {
             locationActivateUserErrors {
                 message
@@ -173,8 +127,7 @@ sucursal = gql(
         }
     }
 
-
-    mutation desactivar($id: ID!, $altId: ID) {
+    mutation desactivarSucursal($id: ID!, $altId: ID) {
         locationDeactivate(locationId: $id, destinationLocationId: $altId){
             location {
                 ... SucursalInfo
@@ -184,7 +137,6 @@ sucursal = gql(
             }
         }
     }
-
 
     fragment SucursalInfo on Location {
         id

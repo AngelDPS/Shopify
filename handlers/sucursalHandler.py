@@ -1,9 +1,6 @@
 import logging
-from models.event import Mevent, Mtienda
 from models.sucursal import MsucursalInput
 from handlers.shopifyObject import ShopifyObject
-from os import rename
-import json
 import re
 
 
@@ -47,87 +44,62 @@ class Sucursal(ShopifyObject):
         m['provinceCode'] = ISO_3166_2_VE[m['province']]
         return m
 
-    @staticmethod
-    def actualizarBD(data: Mtienda, respuesta: dict):
-        DBtemp_path = f'DB/{data.codigoCompania}.json.tmp'
-        DBpath = f'DB/{data.codigoCompania}.json'
-        with open(DBtemp_path, 'w') as DBtemp:
-            with open(DBpath) as DBfile:
-                DB = json.load(DBfile)
-            DB[data.entity] = {
-                data.codigoTienda: respuesta['location']['id']
-            }
-            json.dump(DB, DBtemp)
-        rename(DBtemp_path, DBpath)
-
-    @staticmethod
-    def obtenerId(codigoCompania: str, codigoTienda: str) -> str:
-        DBpath = f'DB/{codigoCompania}.json'
-        with open(DBpath) as DBfile:
-            DB = json.load(DBfile)['tiendas']
-        return DB[codigoTienda]
-
-    def __init__(self, evento: Mevent):
+    def __init__(self, evento):
         self.logger = logging.getLogger("Shopify.Sucursal")
-        self.logger.info("Creando instancia de sucursal.")
-        self.establecerTipo(evento)
+        self.establecerTipo(evento.data.NewImage.entity)
 
         try:
-            self._establecerConexion(evento.config.shopify)
-            if evento.eventName == "INSERT":
-                data = evento.dynamodb.NewImage
+            self._establecerConexion(evento.config['shopify'])
+            if not evento.data.OldImage:
+                self.logger.info("Creando sucursal a partir de tienda.")
                 respuesta = self._crear(
                     MsucursalInput(
-                        name=data.nombre,
+                        name=evento.data.NewImage.nombre,
                         address={
-                            **self.parseDireccion(data.direccion),
-                            'phone': data.telefono
+                            **self.parseDireccion(
+                                evento.data.NewImage.direccion
+                            ),
+                            'phone': evento.data.NewImage.telefono
                         }
                     )
                 )
-                self.actualizarBD(data, respuesta)
-            elif evento.eventName == "MODIFY":
-                data = self.obtenerCambios(evento)
-                direccion = (self.parseDireccion(data.direccion)
-                             if data.direccion else {})
+                evento.gids['tiendas'][evento.data.NewImage.codigoTienda] = (
+                    respuesta['location']['id']
+                )
+                evento.actualizarBD()
+            elif evento.cambios:
+                self.logger.info("Actualizando sucursal.")
                 shopifyInput = MsucursalInput(
-                    name=data.nombre,
+                    name=evento.cambios.nombre,
                     adrress={
-                        **direccion,
-                        'phone': data.telefono
+                        **(self.parseDireccion(evento.cambios.direccion)
+                           if evento.cambios.direccion else {}),
+                        'phone': evento.cambios.telefono
                     }
                 )
                 self._modificar(
                     shopifyInput,
-                    id=self.obtenerId(
-                        evento.dynamodb.OldImage.codigoCompania,
-                        evento.dynamodb.OldImage.codigoTienda
-                    )
+                    id=(evento.gids['tiendas']
+                        [evento.data.OldImage.codigoTienda])
                 )
-        except Exception as err:
-            self.logger.exception(err)
-            raise
-
-    def modificar(self, shopifyInput: dict):
-        try:
-            self._modificar(
-                MsucursalInput.parse_obj(shopifyInput),
-                id=self.ID
-            )
+                {
+                    None: None,
+                    True: self.activar,
+                    False: self.desactivar
+                }[evento.cambios.habilitado](
+                        id=(evento.gids['tiendas']
+                            [evento.data.OldImage.codigoTienda]),
+                        altId=(evento.gids['tiendas']
+                               [evento.data.OldImage.codigoTiendaAlt])
+                    )
         except Exception:
             raise
 
-    def eliminar(self):
-        try:
-            self._eliminar()
-        except Exception:
-            raise
-
-    def desactivar(self, sucursalAlt=None):
+    def desactivar(self, id: str, altId: str = None):
         try:
             respuesta = self._request(
-                "desactivar",
-                variables={"id": self.ID}
+                "desactivarSucursal",
+                variables={"id": id, "altId": altId}
             )
             if respuesta["locationDeactivateUserErrors"]:
                 raise RuntimeError(
@@ -137,11 +109,11 @@ class Sucursal(ShopifyObject):
         except Exception:
             self.logger.exception("No se pudo desactivar la sucursal.")
 
-    def activar(self):
+    def activar(self, id: str, altId: str = None):
         try:
             respuesta = self._request(
-                "activar",
-                variables={"id": self.ID}
+                "activarSucursal",
+                variables={"id": id}
             )
             if respuesta["locationActivateUserErrors"]:
                 raise RuntimeError(
