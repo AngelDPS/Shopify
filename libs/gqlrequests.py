@@ -32,6 +32,27 @@ producto = gql(
         }
     }
 
+   mutation establecerInventarioDisponible(
+       $inventoryId: ID!, $locationId: ID!, $qty: Int!
+    ) {
+    inventorySetOnHandQuantities(
+        input: {reason: "correction", setQuantities: {
+            inventoryItemId: $inventoryId,
+            locationId: $locationId,
+            quantity: $qty
+            }}
+    ) {
+    inventoryAdjustmentGroup {
+      changes {
+        delta
+      }
+    }
+    userErrors {
+      message
+    }
+  }
+}
+
     fragment ProductoInfo on Product {
         id
         productType
@@ -40,7 +61,9 @@ producto = gql(
         variants(first: 1) {
             nodes {
                 id
-                price
+                inventoryItem {
+                    id
+                }
             }
         }
     }

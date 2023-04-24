@@ -42,4 +42,4 @@ def actualizarTodo():
 
 
 if __name__ == '__main__':
-    actualizarTodo()
+    actualizarArticulo()

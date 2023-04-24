@@ -82,7 +82,7 @@ ARTICULO = [
                     "NULL": true
                 },
                 "co_art": {
-                    "S": "ACCE02"
+                    "S": "ACCE01"
                 },
                 "unidad": {
                     "S": "PAR"
@@ -190,13 +190,13 @@ ARTICULO_act = [
                     "NULL": true
                 },
                 "co_art": {
-                    "S": "ACCE02"
+                    "S": "ACCE01"
                 },
                 "unidad": {
                     "S": "PAR"
                 },
                 "stock_act": {
-                    "N": "5"
+                    "N": "10"
                 },
                 "PK": {
                     "S": "GENERICO2022#DLTVA#ACCE02"
@@ -273,7 +273,7 @@ ARTICULO_act = [
                     "NULL": true
                 },
                 "co_art": {
-                    "S": "ACCE02"
+                    "S": "ACCE01"
                 },
                 "unidad": {
                     "S": "PAR"
@@ -324,7 +324,7 @@ LINEA = [
                     "S": "2023-04-10T19:07:37.267878Z"
                 },
                 "co_lin": {
-                    "S": "9"
+                    "S": "8"
                 },
                 "descuento": {
                     "N": "0"

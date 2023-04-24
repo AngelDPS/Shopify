@@ -46,6 +46,10 @@ class Producto(ShopifyObject):
                         'productId': respuesta['product']['id'],
                         'variantId': (
                             respuesta['product']['variants']['nodes'][0]['id']
+                        ),
+                        'inventoryItemId': (
+                            respuesta['product']['variants']['nodes'][0]
+                            ['inventoryItem']['id']
                         )
                     }
                 }})
@@ -56,9 +60,9 @@ class Producto(ShopifyObject):
                     availableQuantity=(evento.cambios.stock_act
                              if evento.cambios.stock_act
                              else evento.dynamodb.OldImage.stock_act),
-                    locationId=evento.gids[
-                        evento.cambio.codigoTienda
-                        if evento.cambio.codigoTienda
+                    locationId=evento.gids['tiendas'][
+                        evento.cambios.codigoTienda
+                        if evento.cambios.codigoTienda
                         else evento.data.OldImage.codigoTienda
                     ]
                 )]
@@ -82,10 +86,11 @@ class Producto(ShopifyObject):
                 productInput.id, variantInput.id = (
                     evento.gids['articulos'][evento.data.OldImage.co_art]
                 ).values()
-                self._request(
+                respuestas = [None, None]
+                respuestas[0] = self._request(
                     'modificarVarianteProducto',
                     variables={'input': variantInput.dict(exclude_none=True)}
                 )
-                self._modificar(productInput)
+                respuestas[1] = self._modificar(productInput)
         except Exception:
             raise

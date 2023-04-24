@@ -35,6 +35,7 @@ class Coleccion(ShopifyObject):
                 shopifyInput = McollectionInput.parse_obj(
                     evento.cambios
                 )
+                # TODO: Implementar función para leer información de BD.
                 shopifyInput.id = (evento.gids['lineas']
                                    [evento.data.OldImage.co_lin_padre]
                                    [evento.data.OldImage.co_lin])
