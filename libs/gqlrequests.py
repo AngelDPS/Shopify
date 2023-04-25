@@ -2,7 +2,29 @@ from gql import gql
 
 producto = gql(
     """
-    mutation crearProducto($input: ProductInput!, $media: [CreateMediaInput!]) {
+    query consultarGidVariante($id: ID!){
+        product(id: $id){
+            variants(first: 1){
+                nodes {
+                    id
+                }
+            }
+        }
+    }
+
+    query consultarGidInventario($id: ID!){
+        product(id: $id) {
+            variants(first: 1) {
+                nodes {
+                    inventoryItem {
+                        id
+                    }
+                }
+            }
+        }
+    }
+
+    mutation crearProducto($input: ProductInput!, $media: [CreateMediaInput!]){
         productCreate(input: $input, media: $media) {
             product {
                 ... ProductoInfo
@@ -42,16 +64,40 @@ producto = gql(
             quantity: $qty
             }}
     ) {
-    inventoryAdjustmentGroup {
-      changes {
-        delta
-      }
+            inventoryAdjustmentGroup {
+                changes {
+                    delta
+                }
+            }
+            userErrors {
+            message
+            }
+        }
     }
-    userErrors {
-      message
+
+    mutation ajustarInventarios(
+        $delta: Int!,
+        $inventoryItemId: ID!,
+        $locationId: ID!,
+        $name: String!,
+        $reason: String!
+    ) {
+        inventoryAdjustQuantities(input: {
+            changes: [
+                {
+                    delta: $delta,
+                    inventoryItemId: $inventoryItemId,
+                    locationId: $locationId
+                }
+            ],
+            name: $name,
+            reason: $reason
+            }){
+            userErrors {
+                message
+            }
+        }
     }
-  }
-}
 
     fragment ProductoInfo on Product {
         id
@@ -175,6 +221,14 @@ sucursal = gql(
 
 misc = gql(
     """
+    query obtenerPublicaciones {
+        publications(first: 2) {
+            nodes {
+                id
+            }
+        }
+    }
+
     mutation publicar($id: ID!, $input: [PublicationInput!]!) {
         publishablePublish(id: $id, input: $input) {
             userErrors {

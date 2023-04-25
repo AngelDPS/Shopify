@@ -6,27 +6,27 @@ getLogger('Shopify')
 
 
 def crearTienda():
-    Evento(eventos.TIENDA).procesar()
+    Evento(eventos.TIENDA).ejecutar()
 
 
 def actualizarTienda():
-    Evento(eventos.TIENDA_act).procesar()
+    Evento(eventos.TIENDA_act).ejecutar()
 
 
 def crearLinea():
-    Evento(eventos.LINEA).procesar()
+    Evento(eventos.LINEA[0]).ejecutar()
 
 
 def actualizarLinea():
-    Evento(eventos.LINEA_act).procesar()
+    Evento(eventos.LINEA_act[0]).ejecutar()
 
 
 def crearArticulo():
-    Evento(eventos.ARTICULO).procesar()
+    Evento(eventos.ARTICULO[0]).ejecutar()
 
 
 def actualizarArticulo():
-    Evento(eventos.ARTICULO_act).procesar()
+    Evento(eventos.ARTICULO_act[0]).ejecutar()
 
 
 def crearTodo():
@@ -42,4 +42,4 @@ def actualizarTodo():
 
 
 if __name__ == '__main__':
-    actualizarArticulo()
+    crearArticulo()

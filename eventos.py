@@ -37,7 +37,7 @@ ARTICULO = [
                     "N": "1"
                 },
                 "co_lin": {
-                    "S": "CAJETINES, CAJAS DE PASO Y ACCESORIOS"
+                    "S": "8"
                 },
                 "created_at": {
                     "S": "2023-04-10T18:25:19.785560Z"
@@ -82,7 +82,7 @@ ARTICULO = [
                     "NULL": true
                 },
                 "co_art": {
-                    "S": "ACCE01"
+                    "S": "ACCE02"
                 },
                 "unidad": {
                     "S": "PAR"
@@ -97,7 +97,7 @@ ARTICULO = [
                     "S": "articulos"
                 },
                 "referencia": {
-                    "S": "REF12345-321"
+                    "S": "REF12345-322"
                 }
             },
             "SequenceNumber": "379556800000000020897494271",
@@ -384,7 +384,7 @@ LINEA_act = [
                     "S": "2023-04-10T19:07:37.267878Z"
                 },
                 "co_lin": {
-                    "S": "9"
+                    "S": "8"
                 },
                 "descuento": {
                     "N": "0"
@@ -419,7 +419,7 @@ LINEA_act = [
                     "S": "2023-04-10T19:07:37.267878Z"
                 },
                 "co_lin": {
-                    "S": "9"
+                    "S": "8"
                 },
                 "descuento": {
                     "N": "0"

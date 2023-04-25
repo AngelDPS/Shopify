@@ -20,7 +20,6 @@ class Marticulo(BaseModel):
     prec_vta1: Decimal | None = None
     prec_vta2: Decimal | None = None
     prec_vta3: Decimal | None = None
-    lineas: str | None = None
     stock_act: int | None = None
     stock_com: int | None = None
     codigo_barra: str | None
