@@ -30,13 +30,11 @@ def actualizarArticulo():
 
 
 def crearTodo():
-    crearTienda()
     crearLinea()
     crearArticulo()
 
 
 def actualizarTodo():
-    actualizarTienda()
     actualizarLinea()
     actualizarArticulo()
 

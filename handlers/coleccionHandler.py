@@ -39,28 +39,44 @@ class Coleccion:
         self.NewImage = evento.NewImage
         self.OldImage = evento.OldImage
         self.cambios = evento.cambios
-        try:
-            self.conexion = ConexionShopify(evento.config['shopify'])
-        except Exception:
-            self.error = True
-            raise
+        self.conexion = ConexionShopify(evento.config['shopify'])
+        # TODO: Información de configuración
+        # "shopify": {
+        # "tienda": "generico2022-8056",
+        # "access_token": "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"
+        # },
 
     def request(self, operacion: str, variables: dict = None) -> dict:
+        """Funcion que realiza operaciones al servidor GraphQL de la tienda
+        de Shopify. Las operaciones son seleccionadas de una lista predefinida
+        en 'gqlrequests.coleccion'
+
+        Args:
+            operacion (str): Nombre de la operación a usar, definida en
+            'gqlrequests.coleccion'
+            variables (dict, optional): variables que la operación puede
+            utilizar. Defaults to None.
+
+        Raises:
+            RuntimeError: En caso de que la operación presente un problema
+            en la respuesta.
+
+        Returns:
+            dict: Json deserealizado con la respuesta obtenida.
+        """
         self.logger.debug(f'{variables = }')
         respuesta = (self.conexion.enviarConsulta(
             gqlrequests.coleccion,
             variables=variables,
             operacion=operacion))
-        respuesta = respuesta[list(respuesta)[0]]
-        self.logger.debug(f'{respuesta = }')
-        if respuesta.get("userErrors"):
+        if respuesta[list(respuesta)[0]].get("userErrors"):
             msg = ("No fue posible realizar la operación:\n"
                    f"{respuesta['userErrors']}")
             self.logger.exception(msg)
             raise RuntimeError(msg)
         return respuesta
 
-    def publicar(self, id: str) -> dict:
+    def publicar(self, gid: str) -> dict:
         try:
             publicationIds = self.conexion.enviarConsulta(
                 gqlrequests.misc, operacion="obtenerPublicaciones"
@@ -69,71 +85,80 @@ class Coleccion:
                 gqlrequests.misc,
                 operacion='publicar',
                 variables={
-                    'id': id,
+                    'id': gid,
                     'input': [{"publicationId": i["id"]}
                               for i in publicationIds]
                 }
             )
             self.logger.info("Publicación exitosa de la coleccion.")
             return respuesta
-        except Exception:
+        except Exception as err:
             self.logger.exception("No se pudo publicar la colección")
+            err.add_note("Error/es encontrado publicando la colección.")
             raise
 
-    def crear(self, input: Mlinea, **kwargs) -> dict:
+    def crear(self, input: Mlinea) -> list[dict]:
+        """Función dedicada a crear una colección en Shopify dada
+        la información de un evento de línea INSERT
+
+        Args:
+            input (Mlinea): Información deserealizada de DynamoDB con la línea
+            a crear
+
+        Returns:
+            list[dict]: Lista con las respuestas de las operaciones de crear y
+            publicar la colección en Shopify.
+        """
         self.logger.info("Creando colección a partir de línea.")
         try:
-            respuesta = self.request(
+            respuestas = [self.request(
                 "crearColeccion",
                 variables={
                     'input': (McollectionInput.parse_obj(input)
                               .dict(exclude_none=True))
                 }
+            )]
+            respuestas.append(self.publicar(
+                respuestas[0]["collectionCreate"]["collection"]["id"]
+            ))
+            self.actualizarBD(
+                input.codigoCompania,
+                input.co_lin,
+                respuestas[0]["collectionCreate"]["collection"]["id"]
             )
-            self.publicar(respuesta["collection"]["id"])
-            self.actualizarBD(input.codigoCompania, input.co_lin,
-                              respuesta["collection"]["id"])
             self.logger.info("Colección creada exitosamente.")
-            return respuesta
-        except Exception:
+            return respuestas
+        except Exception as err:
             self.logger.exception("No fue posible crear la colección")
+            err.add_note("Ocurrieron problemas creando la colección")
             raise
 
-    def modificar(self, input: Mlinea) -> dict:
+    def modificar(self, input: Mlinea) -> list[dict]:
         try:
             shopifyInput = McollectionInput.parse_obj(
                 input.dict(by_alias=True, exclude_none=True)
-                )
+            )
             shopifyInput.id = self.obtenerGid(self.OldImage.codigoCompania,
                                               self.OldImage.co_lin)
-            respuesta = self.request(
+            respuestas = [self.request(
                 "modificarColeccion",
                 variables={'input': shopifyInput.dict(exclude_none=True)},
-            )
+            )]
             self.logger.info("La colección fue modificada exitosamente.")
-            return respuesta
-        except Exception:
+            return respuestas
+        except Exception as err:
             self.logger.exception("No fue posible modificar la colección.")
-            raise
-
-    def _ocultar(self, publicationIds: list[str]) -> dict:
-        try:
-            respuesta = self.conexion.enviarConsulta(
-                gqlrequests.misc,
-                operacion='ocultar',
-                variables={
-                    'id': self.ID,
-                    'input': [{"publicationId": i} for i in publicationIds]
-                }
-            )
-            self.logger.info("Ocultada exitosa.")
-            return respuesta
-        except Exception:
-            self.logger.exception("No se pudo ocultar")
+            err.add_note("Ocurrieron problemas modificando la colección.")
             raise
 
     def ejecutar(self):
-        if not self.OldImage:
-            self.respuesta = self.crear(self.NewImage)
-        elif self.cambios:
-            self.respuesta = self.modificar(self.cambios)
+        try:
+            if not self.OldImage:
+                respuestas = self.crear(self.NewImage)
+            elif self.cambios:
+                respuestas = self.modificar(self.cambios)
+            return respuestas
+        except Exception as err:
+            err.add_note("Ocurrió un problema ejecutando la acción sobre la"
+                         "colección")
+            raise

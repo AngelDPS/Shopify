@@ -1,4 +1,5 @@
 from boto3.dynamodb.types import TypeDeserializer
+from models.respuesta import Respuesta
 from models.evento import Mevento, Mimage
 from handlers.productoHandler import Producto
 from handlers.coleccionHandler import Coleccion
@@ -59,8 +60,6 @@ class Evento:
                              '"NewImage": ...\n\t}\n}')
             err.add_note("")
             raise
-        except Exception:
-            raise
 
     @staticmethod
     def obtenerCambios(NewImage: Mimage, OldImage: Mimage) -> Mimage | None:
@@ -85,6 +84,14 @@ class Evento:
 
     @staticmethod
     def obtenerConfiguracion(codigoCompania: str) -> dict:
+        """Recuperar información del archivo de configuración.
+
+        Args:
+            codigoCompania (str): _description_
+
+        Returns:
+            dict: _description_
+        """
         DBpath = f'DB/{codigoCompania}.json'
         with open(DBpath) as DBfile:
             return load(DBfile)['config']
@@ -102,10 +109,14 @@ class Evento:
         self.logger.debug(f'{self.cambios = }')
 
     def ejecutar(self):
-        if self.cambios or not self.OldImage:
-            {
-                'articulos': Producto,
-                'lineas': Coleccion,
-                'tiendas': Sucursal
-            }[self.NewImage.entity](self).ejecutar()
-            # TODO: Revisar la selección de clase.
+        try:
+            if self.cambios or not self.OldImage:
+                r = {
+                    'articulos': Producto,
+                    'lineas': Coleccion,
+                    'tiendas': Sucursal
+                }[self.NewImage.entity](self).ejecutar()
+                # TODO: Revisar la selección de clase.
+                return Respuesta(status="OK", data=r)
+        except Exception as err:
+            return Respuesta(status="ERROR", error=str(err))

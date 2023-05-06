@@ -10,11 +10,7 @@ class RespuestaColeccion(BaseModel):
     pass
 
 
-class RespuestaSucursal(BaseModel):
-    pass
-
-
-Respuestas = RespuestaColeccion | RespuestaArticulo | RespuestaSucursal
+Respuestas = RespuestaColeccion | RespuestaArticulo
 
 
 class Respuesta(BaseModel):
@@ -23,4 +19,4 @@ class Respuesta(BaseModel):
         None,
         max_length=100
     )
-    data: Respuestas
+    data: list[dict] | None = None

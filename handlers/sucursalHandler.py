@@ -39,8 +39,7 @@ class Sucursal(ShopifyObject):
         m = (re.match(
             r"^(?P<address1>.*)\s(?P<city>\w+), Edo.\s(?P<province>[\w\s]+)$",
             direccion
-        ).groupdict()
-        )
+        ).groupdict())
         m['provinceCode'] = ISO_3166_2_VE[m['province']]
         return m
 

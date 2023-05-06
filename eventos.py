@@ -37,7 +37,7 @@ ARTICULO = [
                     "N": "1"
                 },
                 "co_lin": {
-                    "S": "8"
+                    "S": "CONTROL DE TEMPERATURA"
                 },
                 "created_at": {
                     "S": "2023-04-10T18:25:19.785560Z"
@@ -145,7 +145,7 @@ ARTICULO_act = [
                     "N": "1"
                 },
                 "co_lin": {
-                    "S": "CAJETINES, CAJAS DE PASO Y ACCESORIOS"
+                    "S": "CONTROL DE TEMPERATURA"
                 },
                 "created_at": {
                     "S": "2023-04-10T18:58:25.876283Z"
@@ -190,7 +190,7 @@ ARTICULO_act = [
                     "NULL": true
                 },
                 "co_art": {
-                    "S": "ACCE01"
+                    "S": "ACCE02"
                 },
                 "unidad": {
                     "S": "PAR"
@@ -228,7 +228,7 @@ ARTICULO_act = [
                     "N": "1"
                 },
                 "co_lin": {
-                    "S": "CAJETINES, CAJAS DE PASO Y ACCESORIOS"
+                    "S": "CONTROL DE TEMPERATURA DESC2"
                 },
                 "created_at": {
                     "S": "2023-04-10T18:25:19.785560Z"
@@ -273,7 +273,7 @@ ARTICULO_act = [
                     "NULL": true
                 },
                 "co_art": {
-                    "S": "ACCE01"
+                    "S": "ACCE02"
                 },
                 "unidad": {
                     "S": "PAR"
@@ -324,7 +324,7 @@ LINEA = [
                     "S": "2023-04-10T19:07:37.267878Z"
                 },
                 "co_lin": {
-                    "S": "8"
+                    "S": "CONTROL DE TEMPERATURA"
                 },
                 "descuento": {
                     "N": "0"
@@ -384,7 +384,7 @@ LINEA_act = [
                     "S": "2023-04-10T19:07:37.267878Z"
                 },
                 "co_lin": {
-                    "S": "8"
+                    "S": "CONTROL DE TEMPERATURA"
                 },
                 "descuento": {
                     "N": "0"
@@ -419,7 +419,7 @@ LINEA_act = [
                     "S": "2023-04-10T19:07:37.267878Z"
                 },
                 "co_lin": {
-                    "S": "8"
+                    "S": "CONTROL DE TEMPERATURA"
                 },
                 "descuento": {
                     "N": "0"

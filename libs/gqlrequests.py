@@ -142,19 +142,6 @@ coleccion = gql(
         }
     }
 
-    mutation agregarProductos($id: ID!, $productIds: [ID!]!) {
-        collectionAddProductsV2(id: $id, productIds: $productIds)
-        {
-            job {
-                done
-            }
-            userErrors {
-                field
-                message
-            }
-        }
-    }
-
     fragment coleccionInfo on Collection {
         title
         id
