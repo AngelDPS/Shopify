@@ -2,27 +2,27 @@ true = True
 
 ARTICULO = [
     {
-        "eventID": "dc9dab6c1f61d74bb33206d3eb059a09",
+        "eventID": "a47d122d7bfc042520063c173ce48fff",
         "eventName": "INSERT",
         "eventVersion": "1.1",
         "eventSource": "aws:dynamodb",
         "awsRegion": "us-east-2",
         "dynamodb": {
-            "ApproximateCreationDateTime": 1681153112,
+            "ApproximateCreationDateTime": 1683389013,
             "Keys": {
                 "SK": {
                     "S": "METADATA"
                 },
                 "PK": {
-                    "S": "GENERICO2022#DLTVA#ACCE02"
+                    "S": "GENERICO2022#DLTVA#ACCE13"
                 }
             },
             "NewImage": {
                 "prec_vta1": {
-                    "N": "100"
+                    "N": "0.4"
                 },
                 "prec_vta3": {
-                    "N": "300"
+                    "N": "0.53"
                 },
                 "stock_com": {
                     "N": "0"
@@ -34,13 +34,13 @@ ARTICULO = [
                     "S": "P01"
                 },
                 "prec_vta2": {
-                    "N": "1"
+                    "N": "0.48"
                 },
                 "co_lin": {
-                    "S": "CONTROL DE TEMPERATURA"
+                    "S": "10"
                 },
                 "created_at": {
-                    "S": "2023-04-10T18:25:19.785560Z"
+                    "S": "2023-04-14T18:52:12.427940Z"
                 },
                 "unidad_empaque": {
                     "NULL": true
@@ -52,7 +52,7 @@ ARTICULO = [
                     "NULL": true
                 },
                 "updated_at": {
-                    "S": "2023-04-10T18:25:19.785560Z"
+                    "S": "2023-04-14T18:52:12.427940Z"
                 },
                 "iva": {
                     "N": "16"
@@ -72,65 +72,62 @@ ARTICULO = [
                 "cantidad_empaque": {
                     "N": "0"
                 },
-                "lineas": {
-                    "S": "SIN CATEGORIA"
-                },
                 "art_des": {
-                    "S": "ABRAZADERA MOROCHA 4\" (TORNILLO Y TUERCA) mielda!!"
+                    "S": "ABRAZADERA EMT 2\"  "
                 },
                 "codigo_barra": {
                     "NULL": true
                 },
                 "co_art": {
-                    "S": "ACCE02"
+                    "S": "ACCE13"
                 },
                 "unidad": {
-                    "S": "PAR"
+                    "S": "PZA"
                 },
                 "stock_act": {
-                    "N": "5"
+                    "N": "100"
                 },
                 "PK": {
-                    "S": "GENERICO2022#DLTVA#ACCE02"
+                    "S": "GENERICO2022#DLTVA#ACCE13"
                 },
                 "entity": {
                     "S": "articulos"
                 },
                 "referencia": {
-                    "S": "REF12345-322"
+                    "NULL": true
                 }
             },
-            "SequenceNumber": "379556800000000020897494271",
-            "SizeBytes": 1007,
+            "SequenceNumber": "4911100000000022879305420",
+            "SizeBytes": 881,
             "StreamViewType": "NEW_AND_OLD_IMAGES"
         },
-        "eventSourceARN": "arn:aws:dynamodb:us-east-2:276507440195:table/generico2022-db/stream/2023-03-17T19:09:23.192"
+        "eventSourceARN": "arn:aws:dynamodb:us-east-2:099375320271:table/angel-db/stream/2023-05-05T14:09:53.915"
     }
 ]
 
 ARTICULO_act = [
     {
-        "eventID": "dc9dab6c1f61d74bb33206d3eb059a09",
+        "eventID": "a47d122d7bfc042520063c173ce48fff",
         "eventName": "MODIFY",
         "eventVersion": "1.1",
         "eventSource": "aws:dynamodb",
         "awsRegion": "us-east-2",
         "dynamodb": {
-            "ApproximateCreationDateTime": 1681153112,
+            "ApproximateCreationDateTime": 1683389013,
             "Keys": {
                 "SK": {
                     "S": "METADATA"
                 },
                 "PK": {
-                    "S": "GENERICO2022#DLTVA#ACCE02"
+                    "S": "GENERICO2022#DLTVA#ACCE13"
                 }
             },
             "NewImage": {
                 "prec_vta1": {
-                    "N": "100"
+                    "N": "0.4"
                 },
                 "prec_vta3": {
-                    "N": "300"
+                    "N": "0.53"
                 },
                 "stock_com": {
                     "N": "0"
@@ -142,13 +139,13 @@ ARTICULO_act = [
                     "S": "P01"
                 },
                 "prec_vta2": {
-                    "N": "1"
+                    "N": "0.48"
                 },
                 "co_lin": {
-                    "S": "CONTROL DE TEMPERATURA"
+                    "S": "10"
                 },
                 "created_at": {
-                    "S": "2023-04-10T18:58:25.876283Z"
+                    "S": "2023-04-14T18:52:12.427940Z"
                 },
                 "unidad_empaque": {
                     "NULL": true
@@ -160,7 +157,7 @@ ARTICULO_act = [
                     "NULL": true
                 },
                 "updated_at": {
-                    "S": "2023-04-10T18:58:25.876283Z"
+                    "S": "2023-04-14T18:52:12.427940Z"
                 },
                 "iva": {
                     "N": "16"
@@ -180,40 +177,54 @@ ARTICULO_act = [
                 "cantidad_empaque": {
                     "N": "0"
                 },
-                "lineas": {
-                    "S": "SIN CATEGORIA"
-                },
                 "art_des": {
-                    "S": "ABRAZADERA MOROCHA 4\" (TORNILLO Y TUERCA) NUEVO NOMBRE"
+                    "S": "ABRAZADERA EMT 2\"  "
                 },
                 "codigo_barra": {
                     "NULL": true
                 },
                 "co_art": {
-                    "S": "ACCE02"
+                    "S": "ACCE13"
                 },
                 "unidad": {
-                    "S": "PAR"
+                    "S": "PZA"
                 },
                 "stock_act": {
-                    "N": "10"
+                    "N": "100"
                 },
                 "PK": {
-                    "S": "GENERICO2022#DLTVA#ACCE02"
+                    "S": "GENERICO2022#DLTVA#ACCE13"
                 },
                 "entity": {
                     "S": "articulos"
                 },
                 "referencia": {
-                    "S": "REF12345-321"
+                    "NULL": true
+                },
+                "shopifyGID": {
+                    "M": {
+                        "producto": {
+                            "S": "gid://shopify/Product/8233435791658"
+                        },
+                        "variante": {
+                            "M": {
+                                "id": {
+                                    "S": "gid://shopify/ProductVariant/44825063227690"
+                                },
+                                "inventario": {
+                                    "S": "gid://shopify/InventoryItem/46895955935530"
+                                }
+                            }
+                        }
+                    }
                 }
             },
             "OldImage": {
                 "prec_vta1": {
-                    "N": "100"
+                    "N": "0.4"
                 },
                 "prec_vta3": {
-                    "N": "300"
+                    "N": "0.53"
                 },
                 "stock_com": {
                     "N": "0"
@@ -225,13 +236,13 @@ ARTICULO_act = [
                     "S": "P01"
                 },
                 "prec_vta2": {
-                    "N": "1"
+                    "N": "0.48"
                 },
                 "co_lin": {
-                    "S": "CONTROL DE TEMPERATURA DESC2"
+                    "S": "10"
                 },
                 "created_at": {
-                    "S": "2023-04-10T18:25:19.785560Z"
+                    "S": "2023-04-14T18:52:12.427940Z"
                 },
                 "unidad_empaque": {
                     "NULL": true
@@ -243,7 +254,7 @@ ARTICULO_act = [
                     "NULL": true
                 },
                 "updated_at": {
-                    "S": "2023-04-10T18:25:19.785560Z"
+                    "S": "2023-04-14T18:52:12.427940Z"
                 },
                 "iva": {
                     "N": "16"
@@ -263,39 +274,53 @@ ARTICULO_act = [
                 "cantidad_empaque": {
                     "N": "0"
                 },
-                "lineas": {
-                    "S": "SIN CATEGORIA"
-                },
                 "art_des": {
-                    "S": "ABRAZADERA MOROCHA 4\" (TORNILLO Y TUERCA) mielda!!"
+                    "S": "ABRAZADERA EMT 2\"  "
                 },
                 "codigo_barra": {
                     "NULL": true
                 },
                 "co_art": {
-                    "S": "ACCE02"
+                    "S": "ACCE13"
                 },
                 "unidad": {
-                    "S": "PAR"
+                    "S": "PZA"
                 },
                 "stock_act": {
-                    "N": "5"
+                    "N": "100"
                 },
                 "PK": {
-                    "S": "GENERICO2022#DLTVA#ACCE02"
+                    "S": "GENERICO2022#DLTVA#ACCE13"
                 },
                 "entity": {
                     "S": "articulos"
                 },
                 "referencia": {
-                    "S": "REF12345-321"
+                    "NULL": true
+                },
+                "shopifyGID": {
+                    "M": {
+                        "producto": {
+                            "S": "gid://shopify/Product/8233435791658"
+                        },
+                        "variante": {
+                            "M": {
+                                "id": {
+                                    "S": "gid://shopify/ProductVariant/44825063227690"
+                                },
+                                "inventario": {
+                                    "S": "gid://shopify/InventoryItem/46895955935530"
+                                }
+                            }
+                        }
+                    }
                 }
             },
-            "SequenceNumber": "379556800000000020897494271",
-            "SizeBytes": 1007,
+            "SequenceNumber": "4911100000000022879305420",
+            "SizeBytes": 881,
             "StreamViewType": "NEW_AND_OLD_IMAGES"
         },
-        "eventSourceARN": "arn:aws:dynamodb:us-east-2:276507440195:table/generico2022-db/stream/2023-03-17T19:09:23.192"
+        "eventSourceARN": "arn:aws:dynamodb:us-east-2:099375320271:table/angel-db/stream/2023-05-05T14:09:53.915"
     }
 ]
 
