@@ -5,7 +5,8 @@ from handlers.productoHandler import Producto
 from handlers.coleccionHandler import Coleccion
 from handlers.sucursalHandler import Sucursal
 from logging import getLogger
-from json import load
+
+logger = getLogger("Shopify.eventHandler")
 
 
 class Evento:
@@ -20,7 +21,6 @@ class Evento:
         Returns:
             dict: Diccionario deserealizado
         """
-        logger = getLogger("Shopify.eventHandler")
         deserializer = TypeDeserializer()
         try:
             return {k: deserializer.deserialize(v) for k, v in Image.items()}
@@ -45,7 +45,6 @@ class Evento:
         Returns:
             Mevento: Objeto con los campos de interés del evento.
         """
-        logger = getLogger("Shopify.eventHandler")
         try:
             resultado = evento['dynamodb']
             resultado['NewImage'] = Evento.deserializar(resultado['NewImage'])
@@ -82,41 +81,34 @@ class Evento:
         else:
             return None
 
-    @staticmethod
-    def obtenerConfiguracion(codigoCompania: str) -> dict:
-        """Recuperar información del archivo de configuración.
-
-        Args:
-            codigoCompania (str): _description_
-
-        Returns:
-            dict: _description_
-        """
-        DBpath = f'DB/{codigoCompania}.json'
-        with open(DBpath) as DBfile:
-            return load(DBfile)['config']
-
     def __init__(self, evento: dict):
         """Constructor de la instancia encargada de procesar el evento
 
         Args:
             evento (list): Evento de AWS dentro de una lista.
         """
-        self.logger = getLogger("Shopify.eventHandler")
         self.NewImage, self.OldImage = Evento.formatearEvento(evento)
         self.cambios = self.obtenerCambios(self.NewImage, self.OldImage)
-        self.config = self.obtenerConfiguracion(self.NewImage.codigoCompania)
-        self.logger.debug(f'{self.cambios = }')
+        logger.debug(f'{self.cambios = }')
+
+    def obtenerHandler(self):
+        # TODO: Revisar la selección de clase.
+        return {
+            'articulos': Producto,
+            'lineas': Coleccion,
+            'tiendas': Sucursal
+        }[self.NewImage.entity](self.NewImage, self.OldImage, self.cambios)
 
     def ejecutar(self):
         try:
             if self.cambios or not self.OldImage:
-                r = {
-                    'articulos': Producto,
-                    'lineas': Coleccion,
-                    'tiendas': Sucursal
-                }[self.NewImage.entity](self).ejecutar()
-                # TODO: Revisar la selección de clase.
-                return Respuesta(status="OK", data=r)
+                logger.info("Se encontró inserción o cambios a realizar.")
+                handler = self.obtenerHandler()
+                r = handler.ejecutar()
+                return Respuesta(status="OK", data=r).dict()
+            else:
+                logger.info("No se encontró inserción o cambio necesiaro a"
+                            "realizar.")
+                return Respuesta(status="OK", data=[{}])
         except Exception as err:
             return Respuesta(status="ERROR", error=str(err))

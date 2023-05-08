@@ -26,17 +26,21 @@ class Marticulo(BaseModel):
     referencia: str | None = None
     marca: str | None
     habilitado: bool | None = None
+    shopifyGID: dict | None = None
+    PK: str | None = None
     # created_at: datetime | None = None
     # updated_at: datetime | None = None
 
 
 class Mlinea(BaseModel):
+    SK: str
     entity: Literal["lineas"]
     nombre: str | None = Field(None, alias='title')
     codigoCompania: str | None = None
     co_lin: str | None = None
     co_lin_padre: str | None = None
     descuento: Decimal | None = None
+    shopifyGID: str | None = None
     # created_at: datetime | None = None
     # updated_at: datetime | None = None
 

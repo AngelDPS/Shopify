@@ -1,49 +1,54 @@
 import logging
-from gql import Client
+from gql import Client  # , gql
 from gql.transport.requests import RequestsHTTPTransport
 from gql.transport.exceptions import (
     TransportQueryError,
     TransportServerError
 )
-from graphql.language.ast import DocumentNode
+import os
+
+logger = logging.getLogger('Shopify.Conexion')
 
 
-class ConexionShopify:
-    _access_token: str
-    shop: str
+def get_config() -> dict:
+    config = {
+        'shop': os.environ['SHOPIFY_SHOP'],
+        'access_token': os.environ['SHOPIFY_ACCESS_TOKEN']
+    }
+    return config
+
+
+class ConexionShopify(Client):
     API_VERSION: str = "2023-04"
-    cliente: Client
 
-    def __init__(self, shopifyConfig: dict):
+    def __init__(self, request_string: str):
         """Constructor del objeto que utiliza la información de configuración
         para establecer la conexión con el servidor de GraphQL.
 
         Args:
-            shopifyConfig (dict): Información para la conexión con el 
-            servidor graphQL de la tienda en Shopify.
+            request_string (str): _description_
         """
-        self.shop = shopifyConfig['tienda']
-        self.URL: str = (f"https://{self.shop}.myshopify.com/admin/api/"
+        # self.gqlrequests = gql(request_string)
+        config = get_config()
+        self.URL: str = (f"https://{config['shop']}.myshopify.com/admin/api/"
                          f"{self.API_VERSION}/graphql.json")
-        self.logger = logging.getLogger("Shopify.Conexion")
-        self.logger.info("Creando una instancia de Conexión")
 
         transport = RequestsHTTPTransport(
             self.URL,
-            headers={'X-Shopify-Access-Token': shopifyConfig['access_token']},
+            headers={'X-Shopify-Access-Token': config['access_token']},
             retries=3,
         )
 
-        self.cliente = Client(
-            transport=transport,
-            fetch_schema_from_transport=True
+        super().__init__(
+            transport=transport  # , fetch_schema_from_transport=True
         )
+        logger.info("Instancia de ConexionShopify creada.")
 
-    def enviarConsulta(self,
-                       request: DocumentNode,
-                       variables: dict = None,
-                       operacion: str = None
-                       ) -> dict:
+    def execute(self,
+                request,
+                operacion: str = None,
+                variables: dict = None
+                ) -> dict:
         """Envía una consulta de GraphQL usando el transporte inicializado en
         la instancia.
 
@@ -58,25 +63,24 @@ class ConexionShopify:
         Returns:
             dict: Json deseralizado recibido como respuesta a la consulta.
         """
+        logger.debug(f'{variables = }')
         try:
-            self.respuesta = self.cliente.execute(
+            self.respuesta = super().execute(
                 request,
                 variable_values=variables,
                 operation_name=operacion
             )
-            self.logger.info("Consulta realizada exitosamente.")
-            self.logger.debug(f"{self.respuesta = }")
-            return self.respuesta
+            logger.info("Consulta realizada exitosamente.")
+            logger.debug(f"{self.respuesta = }")
         except TransportQueryError as err:
-            self.logger.exception(
+            logger.exception(
                 "Hubo un problema con la consulta, "
-                f"el servidor retornó un error {err}.",
-                stack_info=True
+                f"el servidor retornó un error {err}."
             )
             err.add_note("Hubo un problema con la consulta de GraphQL")
             raise
         except TransportServerError as err:
-            self.logger.exception(
+            logger.exception(
                 "Hubo un problema con el servidor, "
                 f"retornó un código {err.code}",
                 stack_info=True
@@ -84,9 +88,16 @@ class ConexionShopify:
             err.add_note("Hubo un problema con el servidor de GraphQL")
             raise
         except Exception as err:
-            self.logger.exception(
+            logger.exception(
                 f"Se encontró un error inesperado.\n{type(err)}\n{err}",
                 stack_info=True
             )
             err.add_note("Hubo un problema realizando una consulta de GraphQL")
             raise
+        else:
+            if self.respuesta[list(self.respuesta)[0]].get("userErrors"):
+                msg = ("No fue posible realizar la operación:\n"
+                       f"{self.respuesta['userErrors']}")
+                logger.exception(msg)
+                raise RuntimeError(msg)
+            return self.respuesta

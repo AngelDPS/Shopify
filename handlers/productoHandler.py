@@ -4,38 +4,186 @@ from models.producto import (
     MproductVariantInput,
     MinventoryLevelInput
 )
-from models.evento import Marticulo
+from models.evento import Marticulo, Mlinea
 from handlers.coleccionHandler import Coleccion
 from libs.conexion import ConexionShopify
-from libs import gqlrequests
 from json import load, dump
-from os import rename
+from os import rename, environ
+from gql import gql
+
+logger = getLogger("Shopify.Producto")
 
 
 class Producto:
+    gqlrequests = """
+        query consultarGidVariante($id: ID!){
+            product(id: $id){
+                variants(first: 1){
+                    nodes {
+                        id
+                    }
+                }
+            }
+        }
+
+        query consultarGidInventario($id: ID!){
+            product(id: $id) {
+                variants(first: 1) {
+                    nodes {
+                        inventoryItem {
+                            id
+                        }
+                    }
+                }
+            }
+        }
+
+        mutation crearProducto($input: ProductInput!,
+                               $media: [CreateMediaInput!]){
+            productCreate(input: $input, media: $media) {
+                product {
+                    ... ProductoInfo
+                }
+                userErrors {
+                    message
+                }
+            }
+        }
+
+        mutation modificarProducto($input: ProductInput!) {
+            productUpdate(input: $input) {
+                product {
+                    ... ProductoInfo
+                }
+                userErrors {
+                    message
+                }
+            }
+        }
+
+        mutation modificarVarianteProducto($input: ProductVariantInput!) {
+            productVariantUpdate(input: $input) {
+                userErrors {
+                    message
+                }
+            }
+        }
+
+        mutation establecerInventarioDisponible(
+            $inventoryId: ID!, $locationId: ID!, $qty: Int!
+            ) {
+            inventorySetOnHandQuantities(
+                input: {reason: "correction", setQuantities: {
+                    inventoryItemId: $inventoryId,
+                    locationId: $locationId,
+                    quantity: $qty
+                    }}
+            ) {
+                    inventoryAdjustmentGroup {
+                        changes {
+                            delta
+                        }
+                    }
+                    userErrors {
+                    message
+                    }
+                }
+            }
+
+        mutation ajustarInventarios(
+            $delta: Int!,
+            $inventoryItemId: ID!,
+            $locationId: ID!,
+            $name: String!,
+            $reason: String!
+        ) {
+            inventoryAdjustQuantities(input: {
+                changes: [
+                    {
+                        delta: $delta,
+                        inventoryItemId: $inventoryItemId,
+                        locationId: $locationId
+                    }
+                ],
+                name: $name,
+                reason: $reason
+                }){
+                userErrors {
+                    message
+                }
+            }
+        }
+
+        query obtenerPublicaciones {
+        publications(first: 2) {
+            nodes {
+                id
+            }
+        }
+    }
+
+    mutation publicar($id: ID!, $input: [PublicationInput!]!) {
+        publishablePublish(id: $id, input: $input) {
+            userErrors {
+                field
+                message
+            }
+        }
+    }
+
+    mutation ocultar($id: ID!, $input: [PublicationInput!]!) {
+        publishableUnpublish(id: $id, input: $input) {
+            userErrors {
+                field
+                message
+            }
+        }
+    }
+
+        fragment ProductoInfo on Product {
+            id
+            productType
+            status
+            title
+            variants(first: 1) {
+                nodes {
+                    id
+                    inventoryItem {
+                        id
+                    }
+                }
+            }
+        }
+        """
+    conexion = ConexionShopify(gqlrequests)
 
     # TODO: Función para actualizar BD
-    def actualizarBD(self, codigoCompania: str, co_art: str, gid: str):
-        DBpath = f'DB/{codigoCompania}.json'
+    def actualizarGidBD(self):
+        DBpath = 'DB/GENERICO2022.json'
         DBpath_temp = DBpath + '.temp'
         with open(DBpath) as DBfile, open(DBpath_temp, 'w') as DBtemp:
             try:
                 DB = load(DBfile)
-                DB.setdefault('gids', {}).setdefault('articulos', {})
-                DB['gids']['articulos'][co_art] = gid
+                DB.setdefault('articulos', {}).setdefault(self.NewImage.PK, {})
+                DB['articulos'][self.NewImage.PK]['shopifyGID'] = (
+                    self.NewImage.shopifyGID
+                )
                 dump(DB, DBtemp)
             except TypeError as err:
-                self.logger.exception("Hubo un problema actualizando la base "
-                                      "de datos. Asegurese que el tipo de la "
-                                      "data sea serializable a json.")
-                self.logger.debug(f"{DB = }")
+                logger.exception("Hubo un problema actualizando la base "
+                                 "de datos. Asegurese que el tipo de la "
+                                 "data sea serializable a json.")
+                logger.debug(f"{DB = }")
                 err.add_note("No se pudo serializar la data entrante a la BD.")
                 raise
             else:
                 rename(DBpath_temp, DBpath)
 
     @staticmethod
-    def obtenerGidTienda(codigoCompania: str, codigoTienda: str) -> str:
+    def obtenerCampoPrecio() -> str:
+        return environ['precio']
+
+    def obtenerGidTienda(self, use_old: bool = False) -> str:
         """Función para obtener el GID asociado a codigoTienda.
 
         Args:
@@ -45,265 +193,308 @@ class Producto:
         Returns:
             str: _description_
         """
-        DBpath = f'DB/{codigoCompania}.json'
+        DBpath = 'DB/GENERICO2022.json'
+        codigoTienda = (self.NewImage.codigoTienda if not use_old
+                        else self.OldImage.codigoTienda)
         with open(DBpath) as DBfile:
-            return load(DBfile)['gids']['tiendas'][codigoTienda]
-
-    @staticmethod
-    def obtenerGid(codigoCompania: str, co_art: str) -> str:
-        """Función para obtener GID del producto
-        NOTA:
-          Se puede obtener el GID en el evento.
-
-        Args:
-            codigoCompania (str): _description_
-            co_art (str): _description_
-
-        Returns:
-            str: _description_
-        """
-        DBpath = f'DB/{codigoCompania}.json'
-        with open(DBpath) as DBfile:
-            return load(DBfile)['gids']['articulos'][co_art]
-
-    @staticmethod
-    def obtenerCampoPrecio(codigoCompania: str) -> str:
-        DBpath = f'DB/{codigoCompania}.json'
-        with open(DBpath) as DBfile:
-            return load(DBfile)['config']['precio']
-
-    def __init__(self, evento):
-        self.logger = getLogger("Shopify.Producto")
-        self.NewImage = evento.NewImage
-        self.OldImage = evento.OldImage
-        self.cambios = evento.cambios
-        self.conexion = ConexionShopify(evento.config['shopify'])
-        # TODO: Información de configuración
-        # "shopify": {
-        # "tienda": "generico2022-8056",
-        # "access_token": "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"
-        # },
-
-    def request(self, operacion: str, variables: dict = None) -> dict:
-        """Funcion que realiza operaciones al servidor GraphQL de la tienda
-        de Shopify. Las operaciones son seleccionadas de una lista predefinida
-        en 'gqlrequests.producto'
-
-        Args:
-            operacion (str): Nombre de la operación a usar, definida en
-            'gqlrequests.producto'
-            variables (dict, optional): variables que la operación puede
-            utilizar. Defaults to None.
-
-        Raises:
-            RuntimeError: En caso de que la operación presente un problema
-            en la respuesta.
-
-        Returns:
-            dict: Json deserealizado con la respuesta obtenida.
-        """
-        self.logger.debug(f'{variables = }')
-        respuesta = (self.conexion.enviarConsulta(
-            gqlrequests.producto,
-            variables=variables,
-            operacion=operacion))
+            DB = load(DBfile)
+        tienda = DB['tiendas'][codigoTienda]
         try:
-            if respuesta[list(respuesta)[0]].get("userErrors"):
-                msg = ("No fue posible realizar la operación:\n"
-                       f"{respuesta['userErrors']}")
-                self.logger.exception(msg)
-                raise RuntimeError(msg)
-            return respuesta
-        except AttributeError:
-            self.logger.exception("Consulta inexitosa, GID no existe.")
+            return tienda['shopifyGID']['sucursal']
+        except KeyError:
+            tienda['shopifyGID']['sucursal'] = self.conexion.execute(
+                gql("""
+                    query Tienda($nombre: String) {
+                        locations(first: 1, query: $nombre) {
+                            nodes {
+                                id
+                            }
+                        }
+                    }
+                    """),
+                variables={"name": f"name:{tienda['nombre']}"}
+                )['locations']['nodes'][0]['id']
+            DB['tiendas'][codigoTienda] |= tienda
+            DBpath_temp = DBpath + '.temp'
+            with open(DBpath_temp, 'w') as DBtemp:
+                dump(DB, DBtemp)
+            rename(DBpath_temp, DBpath)
+            return tienda['shopifyGID']['sucursal']
 
-    def obtenerGidVariante(self, gid: str) -> str:
-        """Consulta Shopify por el GID de la única variante de producto
-        asociada al GID de producto.
+    def obtenerGidColeccion(self, use_old: bool = False) -> str:
+        DBpath = 'DB/GENERICO2022.json'
+        SK = (f"T#{self.NewImage.codigoTienda}#L#{self.NewImage.co_lin}"
+              if not use_old else
+              f"T#{self.OldImage.codigoTienda}#L#{self.OldImage.co_lin}")
+        with open(DBpath) as DBfile:
+            linea = load(DBfile)['lineas'][SK]
+        try:
+            return linea['shopifyGID']
+        except KeyError:
+            linea = Mlinea.parse_obj(linea)
+            respuestas = Coleccion(linea).crear()
+            return respuestas[0]["collectionCreate"]["collection"]["id"]
 
-        Args:
-            gid (str): Shopify Global ID del producto a consultar.
+    def obtenerGidPublicaciones(self, use_old: bool = False) -> str:
+        codigoTienda = (self.NewImage.codigoTienda if not use_old
+                        else self.OldImage.codigoTienda)
+        DBpath = 'DB/GENERICO2022.json'
+        with open(DBpath) as DBfile:
+            DB = load(DBfile)
+        tienda = DB['tiendas'][codigoTienda]
+        try:
+            return tienda['shopifyGID']['publicaciones']
+        except KeyError:
+            tienda['shopifyGID']['publicaciones'] = [
+                i["id"] for i in
+                self.conexion.execute(
+                    gql("""
+                    query obtenerPublicaciones {
+                        publications(first: 2) {
+                            nodes {
+                                id
+                            }
+                        }
+                    }
+                    """)
+                )['publications']['nodes']
+            ]
+            DB['tiendas'][codigoTienda] |= tienda
+            DBpath_temp = DBpath + '.temp'
+            with open(DBpath_temp, 'w') as DBtemp:
+                dump(DB, DBtemp)
+            rename(DBpath_temp, DBpath)
+            return tienda['shopifyGID']['publicaciones']
 
-        Returns:
-            str: Shopify Global ID de la variante del producto.
-        """
-        return self.request(
-            "consultarGidVariante",
-            variables={"id": gid}
-        )["product"]["variants"]["nodes"][0]["id"]
+    def __init__(self, NewImage: Marticulo, OldImage: Marticulo = None,
+                 cambios: Marticulo = None):
+        self.NewImage = NewImage
+        self.OldImage = OldImage
+        self.cambios = cambios
+        preciosIgnorar = ['prec_vta1', 'prec_vta2', 'prec_vta3']
+        preciosIgnorar.remove(self.obtenerCampoPrecio())
+        [setattr(self.cambios, prec, None) for prec in preciosIgnorar]
+        self.cambios.entity = None
 
-    def obtenerGidInventario(self, gid: str) -> str:
-        """Consulta Shopify por el GID de ítem de inventario de la única
-        variante de producto asociada al GID de producto.
-
-        Args:
-            gid (str): Shopify Global ID del producto a consultar.
-
-        Returns:
-            str: Shopify Global ID del ítem de inventario.
-        """
-        return self.request(
-            "consultarGidInventario",
-            variables={"id": gid}
-        )["product"]["variants"]["nodes"][0]["inventoryItem"]["id"]
-
-    def publicar(self, gid: str) -> dict:
+    def publicar(self) -> dict:
         """Publica el artículo en la tienda virtual y punto de venta de
         Shopify.
 
-        Args:
-            gid (str): GID de Shopify para el producto.
-
         Returns:
             dict: Json deserealizado con la respuesta obtenida.
         """
         try:
-            publicationIds = self.conexion.enviarConsulta(
-                gqlrequests.misc, operacion="obtenerPublicaciones"
-            )['publications']['nodes']
-            respuesta = self.conexion.enviarConsulta(
-                gqlrequests.misc,
-                operacion='publicar',
+            respuesta = self.conexion.execute(
+                gql("""
+                    mutation publicar($id: ID!, $input: [PublicationInput!]!) {
+                        publishablePublish(id: $id, input: $input) {
+                            userErrors {
+                                field
+                                message
+                            }
+                        }
+                    }
+                    """),
                 variables={
-                    'id': gid,
-                    'input': [{"publicationId": i["id"]}
-                              for i in publicationIds]
+                    'id': self.NewImage.shopifyGID['producto'],
+                    'input': [{"publicationId": id}
+                              for id in self.obtenerGidPublicaciones()]
                 }
             )
-            self.logger.info("Publicación exitosa del producto.")
+            logger.info("Publicación exitosa del producto.")
             return respuesta
         except Exception as err:
-            self.logger.exception("No se pudo publicar el producto.")
+            logger.exception("No se pudo publicar el producto.")
             err.add_note("Error/es encontrado publicando el producto.")
             raise
 
-    def crear(self, input: Marticulo) -> list[dict]:
+    def crear(self) -> list[dict]:
         """Función dedicada a crear un producto en Shopify dada
         la información de un evento de artículo INSERT
-
-        Args:
-            input (Marticulo): Información deserealizada de DynamoDB con
-            el artículo a crear
 
         Returns:
             list[dict]: Lista con las respuestas de las operaciones de crear y
             publicar el producto en Shopify.
         """
-        self.logger.info("Creando producto a partir de artículo.")
+        logger.info("Creando producto a partir de artículo.")
         try:
             inventory = [MinventoryLevelInput(
-                availableQuantity=input.stock_act,
-                locationId=self.obtenerGidTienda(input.codigoCompania,
-                                                 input.codigoTienda)
+                availableQuantity=(self.NewImage.stock_act
+                                   - self.NewImage.stock_com),
+                locationId=self.obtenerGidTienda()
             )]
             variantInput = MproductVariantInput(
-                **input.dict(by_alias=True,
-                             exclude_none=True),
+                **self.NewImage.dict(by_alias=True,
+                                     exclude_none=True),
                 inventoryQuantities=inventory)
-            # TODO: Pendiente obtener configuración de la nube
-            variantInput.price = getattr(input,
-                                         self.obtenerCampoPrecio(
-                                             input.codigoCompania)
-                                         )
+            variantInput.price = getattr(self.NewImage,
+                                         self.obtenerCampoPrecio())
             productInput = MproductInput(
-                **input.dict(by_alias=True,
-                             exclude_none=True),
+                **self.NewImage.dict(by_alias=True,
+                                     exclude_none=True),
                 status=("ACTIVE"
-                        if input.habilitado
+                        if self.NewImage.habilitado
                         else "ARCHIVED"),
                 variants=[variantInput],
-                collectionsToJoin=[Coleccion.obtenerGid(
-                    input.codigoCompania, input.co_lin)])
-            respuestas = [self.request(
-                "crearProducto",
+                collectionsToJoin=[self.obtenerGidColeccion()])
+            respuestas = [self.conexion.execute(
+                gql("""
+                    mutation crearProducto($input: ProductInput!,
+                               $media: [CreateMediaInput!]){
+                        productCreate(input: $input, media: $media) {
+                            product {
+                                id
+                                variants(first: 1) {
+                                    nodes {
+                                        id
+                                        inventoryItem {
+                                            id
+                                        }
+                                    }
+                                }
+                            }
+                            userErrors {
+                                message
+                            }
+                        }
+                    }
+                    """),
                 variables={'input': productInput.dict(exclude_none=True)}
             )]
-            self.publicar(respuestas[0]['productCreate']['product']['id'])
-            self.actualizarBD(
-                input.codigoCompania,
-                input.co_art,
-                respuestas[0]['productCreate']['product']['id']
-            )
+            self.NewImage.shopifyGID = {
+                'producto': respuestas[0]['productCreate']['product']['id'],
+                'variante': {
+                    'id': (respuestas[0]['productCreate']['product']
+                           ['variants']['nodes'][0]['id']),
+                    'inventario': (respuestas[0]['productCreate']['product']
+                                   ['variants']['nodes'][0]['inventoryItem']
+                                   ['id'])
+                }
+            }
+            self.publicar()
+            self.actualizarGidBD()
             return respuestas
         except Exception as err:
-            self.logger.exception("No fue posible crear el producto.")
+            logger.exception("No fue posible crear el producto.")
             err.add_note("Ocurrieron problemas creando el producto.")
             raise
 
-    def ajustarInventario(self, gid: str, delta: int, name: str,
-                          reason: str) -> dict:
-        respuesta = self.request(
-            "ajustarInventarios",
+    def _modificarInventario(self, delta: int) -> dict:
+        reason = "restock" if delta > 0 else "shrinkage"
+        respuesta = self.conexion.execute(
+            gql("""
+                mutation ajustarInventarios(
+                    $delta: Int!,
+                    $inventoryItemId: ID!,
+                    $locationId: ID!,
+                    $name: String!,
+                    $reason: String!
+                ) {
+                    inventoryAdjustQuantities(input: {
+                        changes: [
+                            {
+                                delta: $delta,
+                                inventoryItemId: $inventoryItemId,
+                                locationId: $locationId
+                            }
+                        ],
+                        name: $name,
+                        reason: $reason
+                        }){
+                        userErrors {
+                            message
+                        }
+                    }
+                }
+                """),
             variables={
                 "delta": delta,
-                "name": name,
+                "name": "available",
                 "reason": reason,
-                "inventoryItemId": self.obtenerGidInventario(gid),
-                "locationId": self.obtenerGidTienda(
-                    self.OldImage.codigoCompania,
-                    self.OldImage.codigoTienda
-                )
+                "inventoryItemId": (self.OldImage.shopifyGID['variante']
+                                    ['inventario']),
+                "locationId": self.obtenerGidTienda(use_old=True)
             }
         )
         return respuesta
 
-    def modificar(self, input: Marticulo) -> dict:
+    def modificar(self) -> dict:
         try:
-            self.logger.info("Actualizando producto.")
+            logger.info("Actualizando producto.")
             variantInput = MproductVariantInput.parse_obj(
-                input.dict(by_alias=True))
-            # TODO: Pendiente obtener configuración de la nube
-            variantInput.price = getattr(
-                input, self.obtenerCampoPrecio(self.OldImage.codigoCompania)
-            )
+                self.cambios.dict(by_alias=True))
+            variantInput.price = getattr(self.cambios,
+                                         self.obtenerCampoPrecio())
             status = {
                 None: None,
                 True: "ACTIVE",
                 False: "ARCHIVED"
-            }[input.habilitado]
+            }[self.cambios.habilitado]
             productInput = MproductInput(
-                **input.dict(by_alias=True, exclude_none=True),
+                **self.cambios.dict(by_alias=True, exclude_none=True),
                 status=status)
-            gid = self.obtenerGid(self.OldImage.codigoCompania,
-                                  self.OldImage.co_art)
+            if self.cambios.co_lin:
+                productInput.collectionsToJoin = [self.obtenerGidColeccion()]
+                productInput.collectionsToLeave = [
+                    self.obtenerGidColeccion(use_old=True)
+                ]
             respuestas = []
-            if input.stock_act:
-                delta = input.stock_act - self.OldImage.stock_act
-                reason = "restock" if delta > 0 else "shrinkage"
-                respuestas.append(
-                    self.ajustarInventario(gid, delta, "available", reason)
-                )
-            if input.stock_com:
-                delta = input.stock_com - self.OldImage.stock_com
-                reason = ("reservation_created" if delta > 0
-                          else "reservation_deleted")
-                respuestas.append(
-                    self.ajustarInventario(gid, delta, "reserved", reason)
-                )
-            if variantInput.dict(exclude_none=True):
-                variantInput.id = self.obtenerGidVariante(gid)
-                respuestas.append(self.request(
-                    'modificarVarianteProducto',
+            if self.cambios.stock_act or self.cambios.stock_com:
+                delta_act = (self.cambios.stock_act - self.OldImage.stock_act
+                             if self.cambios.stock_act else 0)
+                delta_com = (self.cambios.stock_com - self.OldImage.stock_com
+                             if self.cambios.stock_com else 0)
+                delta = delta_act - delta_com
+                if delta != 0:
+                    respuestas.append(
+                        self.ajustarInventario(delta)
+                    )
+            if variantInput.dict(exclude_none=True, exclude_unset=True):
+                variantInput.id = self.OldImage.shopifyGID["variante"]["id"]
+                respuestas.append(self.conexion.execute(
+                    gql("""
+                        mutation modificarVarianteProducto(
+                                $input: ProductVariantInput!
+                            ) {
+                            productVariantUpdate(input: $input) {
+                                userErrors {
+                                    message
+                                }
+                            }
+                        }
+                        """),
                     variables={'input': variantInput.dict(exclude_none=True)}
                 ))
-            if productInput.dict(exclude_none=True):
-                productInput.id = gid
-                respuestas.append(self.request(
-                    "modificarProducto",
+            if productInput.dict(exclude_none=True, exclude_unset=True):
+                productInput.id = self.OldImage.shopifyGID["producto"]
+                respuestas.append(self.conexion.execute(
+                    gql("""
+                        mutation modificarProducto($input: ProductInput!) {
+                            productUpdate(input: $input) {
+                                userErrors {
+                                    message
+                                }
+                            }
+                        }
+                        """),
                     variables={'input': productInput.dict(exclude_none=True)}
                 ))
             return respuestas
         except Exception as err:
-            self.logger.exception("No fue posible modificar el producto.")
+            logger.exception("No fue posible modificar el producto.")
             err.add_note("Ocurrieron problemas modificando el producto")
             raise
 
     def ejecutar(self):
         try:
             if not self.OldImage:
-                respuestas = self.crear(self.NewImage)
-            elif self.cambios:
-                respuestas = self.modificar(self.cambios)
+                respuestas = (self.crear())
+            elif self.cambios.dict(exclude_none=True):
+                respuestas = (self.modificar())
+            else:
+                logger.info("Los cambios encontrados no ameritan "
+                            "actualizaciones en Shopify.")
+                respuestas = [{}]
             return respuestas
         except Exception as err:
             err.add_note("Ocurrió un problema ejecutando la acción sobre el"
