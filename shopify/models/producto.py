@@ -1,7 +1,7 @@
 from pydantic import BaseModel as PydanticBaseModel, Field, NonNegativeInt
 from decimal import Decimal
 from typing import Literal
-from models.misc import (
+from shopify.models.misc import (
     MimageInput,
     MSEOInput,
     MmetafieldInput,

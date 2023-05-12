@@ -11,7 +11,7 @@ class BaseModel(PydanticBaseModel):
 
 
 class Marticulo(BaseModel):
-    entity: Literal["articulos"]
+    entity: Literal["articulos"] = "articulos"
     art_des: str | None = None
     codigoCompania: str | None = None
     codigoTienda: str | None = None
@@ -22,19 +22,21 @@ class Marticulo(BaseModel):
     prec_vta3: Decimal | None = None
     stock_act: int | None = None
     stock_com: int | None = None
-    codigo_barra: str | None
+    codigo_barra: str | None = None
     referencia: str | None = None
-    marca: str | None
+    marca: str | None = None
     habilitado: bool | None = None
     shopifyGID: dict | None = None
     PK: str | None = None
+    SK: str | None = None
     # created_at: datetime | None = None
     # updated_at: datetime | None = None
 
 
 class Mlinea(BaseModel):
-    SK: str
-    entity: Literal["lineas"]
+    PK: str | None = None
+    SK: str | None = None
+    entity: Literal["lineas"] = "lineas"
     nombre: str | None = Field(None, alias='title')
     codigoCompania: str | None = None
     co_lin: str | None = None
@@ -46,7 +48,7 @@ class Mlinea(BaseModel):
 
 
 class Mtienda(BaseModel):
-    entity: Literal["tiendas"]
+    entity: Literal["tiendas"] = "tiendas"
     nombre: str | None = Field(None, alias='name')
     direccion: str | None = None
     telefono: str | None = Field(None, alias='phone')
@@ -58,9 +60,9 @@ class Mtienda(BaseModel):
     # correo
 
 
-Mimage = Marticulo | Mlinea | Mtienda
+Mimage = Marticulo
 
 
 class Mevento(BaseModel):
-    NewImage: Mimage = Field(..., discriminator='entity')
-    OldImage: Mimage | None = Field(None, discriminator='entity')
+    NewImage: Marticulo  # = Field(..., discriminator='entity')
+    OldImage: Marticulo | None = None  # = Field(None, discriminator='entity')

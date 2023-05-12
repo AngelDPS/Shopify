@@ -1,15 +1,12 @@
 from boto3.dynamodb.types import TypeDeserializer
-from models.respuesta import Respuesta
-from models.evento import Mevento, Mimage
-from handlers.productoHandler import Producto
-from handlers.coleccionHandler import Coleccion
-from handlers.sucursalHandler import Sucursal
+from shopify.models.evento import Mevento, Mimage
+from shopify.handlers.productoHandler import ProductoHandler
 from logging import getLogger
 
-logger = getLogger("Shopify.eventHandler")
+logger = getLogger("shopify.eventHandler")
 
 
-class Evento:
+class EventHandler:
 
     @staticmethod
     def deserializar(Image: dict) -> dict:
@@ -47,25 +44,32 @@ class Evento:
         """
         try:
             resultado = evento['dynamodb']
-            resultado['NewImage'] = Evento.deserializar(resultado['NewImage'])
-            resultado['OldImage'] = (Evento.deserializar(resultado['OldImage'])
-                                     if resultado.get('OldImage') else None)
+            resultado['NewImage'] = EventHandler.deserializar(
+                resultado['NewImage']
+            )
+            resultado['OldImage'] = (EventHandler.deserializar(
+                resultado['OldImage']
+            )
+                if resultado.get('OldImage') else None)
             resultado = Mevento.parse_obj(resultado)
             return resultado.NewImage, resultado.OldImage
-        except KeyError as err:
+        except KeyError:
             logger.exception("Formato inesperado para el evento.\n"
                              "El evento debería tener los objetos\n"
                              '{\n\t...,\n\t"dynamobd": {\n\t\t...\n\t\t'
                              '"NewImage": ...\n\t}\n}')
-            err.add_note("")
             raise
 
     @staticmethod
     def obtenerCambios(NewImage: Mimage, OldImage: Mimage) -> Mimage | None:
-        """Obtiene los cambios realizados en un evento de tipo "MODIFY"
+        """Obtiene los cambios realizados entre dos imágenes, anterior y
+        posterior, de un ítem.
 
         Args:
-            evento (Mevento): Modelo de evento con los campos de interés
+            NewImage (Mimage): Modelo de los dátos de la tabla de DynamoDB
+            con la imagen del ítem antes de ser modificado.
+            OldImage (Mimage): Modelo de los dátos de la tabla de DynamoDB
+            con la imagen del ítem modificado
 
         Returns:
             Mimage | None: Modelo con los campos de la base de datos que
@@ -87,17 +91,13 @@ class Evento:
         Args:
             evento (list): Evento de AWS dentro de una lista.
         """
-        self.NewImage, self.OldImage = Evento.formatearEvento(evento)
+        self.NewImage, self.OldImage = EventHandler.formatearEvento(evento)
         self.cambios = self.obtenerCambios(self.NewImage, self.OldImage)
         logger.debug(f'{self.cambios = }')
 
     def obtenerHandler(self):
         # TODO: Revisar la selección de clase.
-        return {
-            'articulos': Producto,
-            'lineas': Coleccion,
-            'tiendas': Sucursal
-        }[self.NewImage.entity](self.NewImage, self.OldImage, self.cambios)
+        return ProductoHandler(self.NewImage, self.OldImage, self.cambios)
 
     def ejecutar(self):
         try:
@@ -105,10 +105,16 @@ class Evento:
                 logger.info("Se encontró inserción o cambios a realizar.")
                 handler = self.obtenerHandler()
                 r = handler.ejecutar()
-                return Respuesta(status="OK", data=r).dict()
+                return {"status": "OK", "respuesta": r}
             else:
                 logger.info("No se encontró inserción o cambio necesiaro a"
                             "realizar.")
-                return Respuesta(status="OK", data=[{}])
+                return {"status": "OK",
+                        "respuesta": "No se realizaron acciones."}
         except Exception as err:
-            return Respuesta(status="ERROR", error=str(err))
+            mensaje = ("Ocurrió un error ejecutando el evento. "
+                       f"Se levantó la excepción '{err}'.")
+            logger.exception(mensaje)
+            logger.debug(f"{self.NewImage = }")
+            logger.debug(f"{self.OldImage = }")
+            return {"status": "ERROR", "respuesta": mensaje}
