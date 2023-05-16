@@ -4,7 +4,13 @@ from shopify.models.producto import (
     MproductVariantInput,
     MinventoryLevelInput
 )
-from shopify.models.evento import Marticulo, Mlinea
+from shopify.models.evento import (
+    Marticulo,
+    Mlinea,
+    McambiosInventario,
+    McambiosVariante,
+    McambiosProducto
+)
 from shopify.handlers.coleccionHandler import ColeccionHandler
 from os import environ
 import dynamodb
@@ -190,13 +196,61 @@ class ProductoHandler:
             logger.exception("No fue posible crear el producto.")
             raise
 
-    def modificar(self) -> dict:
+    def _modificarInventario(self) -> str:
         try:
-            logger.info("Actualizando producto.")
+            cambios = McambiosInventario.parse_obj(self.cambios.dict(
+                by_alias=True, exclude_none=True, exclude_unset=True
+            ))
+            delta_act = (self.cambios.stock_act - self.OldImage.stock_act
+                         if self.cambios.stock_act else 0)
+            delta_com = (self.cambios.stock_com - self.OldImage.stock_com
+                         if self.cambios.stock_com else 0)
+            delta = delta_act - delta_com
+            if delta != 0:
+                conexion.modificarInventario(
+                    delta,
+                    invId=(
+                        self.OldImage.shopifyGID['variante']['inventario']
+                    ),
+                    locId=self.obtenerGidTienda(use_old=True)
+                )
+                return "Cambio de inventario"
+            else:
+                logger.info("La información suministrada no produjo cambios de"
+                            " inventario.")
+                return "Inventario no actualizado."
+        except Exception:
+            logger.exception("Se encontró un problema actualizando el "
+                             "inventario del producto.")
+            raise
+
+    def _modificarVariante(self) -> str:
+        try:
+            cambios = McambiosVariante.parse_obj(self.cambios.dict(
+                exclude_none=True, exclude_unset=True
+            ))
             variantInput = MproductVariantInput.parse_obj(
-                self.cambios.dict(by_alias=True))
-            variantInput.price = getattr(self.cambios,
-                                         self.usar_precio)
+                self.cambios.dict(exclude_none=True, by_alias=True))
+            # variantInput.price = getattr(cambios,
+            #                             self.usar_precio)
+            if variantInput.dict(exclude_none=True, exclude_unset=True):
+                variantInput.id = self.OldImage.shopifyGID["variante"]["id"]
+                conexion.modificarVarianteProducto(variantInput)
+                return "Actualización de variante."
+            else:
+                logger.info("La información suministrada no produjo cambios a"
+                            "la variante del producto.")
+                return "Variante no actualizada."
+        except Exception:
+            logger.exception("Se encontró un problema actualizando la variante"
+                             " del producto.")
+            raise
+
+    def _modificarProducto(self) -> str:
+        try:
+            cambios = McambiosProducto.parse_obj(
+                self.cambios.dict(exclude_none=True, exclude_unset=True)
+            )
             status = {
                 None: None,
                 True: "ACTIVE",
@@ -204,36 +258,32 @@ class ProductoHandler:
             }[self.cambios.habilitado]
             productInput = MproductInput(
                 **self.cambios.dict(by_alias=True, exclude_none=True),
-                status=status)
+                status=status
+            )
             if self.cambios.co_lin:
                 productInput.collectionsToJoin = [self.obtenerGidColeccion()]
                 productInput.collectionsToLeave = [
                     self.obtenerGidColeccion(use_old=True)
                 ]
-            respuestas = []
-            if self.cambios.stock_act or self.cambios.stock_com:
-                delta_act = (self.cambios.stock_act - self.OldImage.stock_act
-                             if self.cambios.stock_act else 0)
-                delta_com = (self.cambios.stock_com - self.OldImage.stock_com
-                             if self.cambios.stock_com else 0)
-                delta = delta_act - delta_com
-                if delta != 0:
-                    conexion.modificarInventario(
-                        delta,
-                        invId=(
-                            self.OldImage.shopifyGID['variante']['inventario']
-                        ),
-                        locId=self.obtenerGidTienda(use_old=True)
-                    )
-                    respuestas.append("Cambio de inventario")
-            if variantInput.dict(exclude_none=True, exclude_unset=True):
-                variantInput.id = self.OldImage.shopifyGID["variante"]["id"]
-                conexion.modificarVarianteProducto(variantInput)
-                respuestas.append("Actualización de variante")
             if productInput.dict(exclude_none=True, exclude_unset=True):
                 productInput.id = self.OldImage.shopifyGID["producto"]
                 conexion.modificarProducto(productInput)
-                respuestas.append("Actualización de producto")
+                return "Actualización de producto"
+            else:
+                logger.info("La información suministrada no produjo cambios al"
+                            " producto.")
+                return "Producto no actualizado."
+        except Exception:
+            logger.exception("Se encontró un problema actualizando el "
+                             "producto.")
+            raise
+
+    def modificar(self) -> dict:
+        try:
+            respuestas = []
+            respuestas.append(self._modificarInventario())
+            respuestas.append(self._modificarVariante())
+            respuestas.append(self._modificarProducto())
             return respuestas
         except Exception:
             logger.exception("No fue posible modificar el producto.")

@@ -14,8 +14,8 @@ def actualizarGidArticulo(PK: str, SK: str, GID: str):
     rename(DBpath_temp, DBpath)
 
 
-def obtenerGidTienda(codigoCompania: str, codigoTienda: str
-                     ) -> dict[str, dict[str, str]]:
+def obtenerTienda(codigoCompania: str, codigoTienda: str
+                  ) -> dict[str, dict[str, str]]:
     """Función para obtener el GID asociado a codigoTienda.
 
     Args:
@@ -30,12 +30,7 @@ def obtenerGidTienda(codigoCompania: str, codigoTienda: str
     with open(DBpath) as DBfile:
         DB = load(DBfile)
     tienda = DB[PK][SK]
-    temp = tienda.copy()
-    for k in tienda:
-        if k == "shopifyGID":
-            continue
-        del temp[k]
-    return temp
+    return tienda
 
 
 def obtenerNombreTienda(codigoCompania: str, codigoTienda: str

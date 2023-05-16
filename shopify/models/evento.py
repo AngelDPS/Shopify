@@ -17,9 +17,9 @@ class Marticulo(BaseModel):
     codigoTienda: str | None = None
     co_art: str | None = None
     co_lin: str | None = None
-    prec_vta1: Decimal | None = None
-    prec_vta2: Decimal | None = None
-    prec_vta3: Decimal | None = None
+    prec_vta1: Decimal | None = Field(None, alias='precio')
+    prec_vta2: Decimal | None = Field(None, alias='precio')
+    prec_vta3: Decimal | None = Field(None, alias='precio')
     stock_act: int | None = None
     stock_com: int | None = None
     codigo_barra: str | None = None
@@ -31,6 +31,27 @@ class Marticulo(BaseModel):
     SK: str | None = None
     # created_at: datetime | None = None
     # updated_at: datetime | None = None
+
+
+class McambiosInventario(BaseModel):
+    stock_act: int | None = None
+    stock_com: int | None = None
+
+
+class McambiosVariante(BaseModel):
+    prec_vta1: Decimal | None = Field(None, alias='precio')
+    prec_vta2: Decimal | None = Field(None, alias='precio')
+    prec_vta3: Decimal | None = Field(None, alias='precio')
+    codigo_barra: str | None = None
+    referencia: str | None = None
+
+
+class McambiosProducto(BaseModel):
+    art_des: str | None = None
+    co_lin: str | None = None
+    marca: str | None = None
+    habilitado: bool | None = None
+    status: Literal["ACTIVE", "ARCHIVED"] | None = None
 
 
 class Mlinea(BaseModel):

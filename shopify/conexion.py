@@ -314,6 +314,30 @@ def consultarProducto(nombre: str):
             """
         )
     except Exception:
+        logger.exception("Hubo un problema al consultar el producto en "
+                         "Shopify.")
+        raise
+    try:
+        shopifyGID = {
+            'producto': respuesta['products']['nodes'][0]['id'],
+            'variante': {
+                'id': (respuesta['products']['nodes'][0]
+                       ['variants']['nodes'][0]['id']),
+                'inventario': (respuesta['products']['nodes'][0]
+                               ['variants']['nodes'][0]['inventoryItem']
+                               ['id'])
+            }
+        }
+        locations = {
+            loc['name']: loc['id'] for loc in (
+                respuesta['products']['nodes'][0]['variants']['nodes'][0]
+                ['inventoryItem']['inventory']
+            )
+        }
+        return (shopifyGID, locations)
+    except (KeyError, IndexError):
+        logger.exception("Formato inesperado de respuesta para la creación "
+                         "del producto.")
         raise
 
 
