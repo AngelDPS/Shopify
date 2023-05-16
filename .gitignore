@@ -7,3 +7,8 @@ logs*
 DB/GENERICO2022.json
 .vscode*
 TestingFunctionAngl*
+angel-tabla.json
+eventos.py
+docs/Colecciones.md
+docs/Productos.md
+docs/Sucursales.md
