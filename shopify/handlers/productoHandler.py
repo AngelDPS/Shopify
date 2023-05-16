@@ -6,10 +6,7 @@ from shopify.models.producto import (
 )
 from shopify.models.evento import (
     Marticulo,
-    Mlinea,
-    McambiosInventario,
-    McambiosVariante,
-    McambiosProducto
+    Mlinea
 )
 from shopify.handlers.coleccionHandler import ColeccionHandler
 from os import environ
@@ -97,11 +94,15 @@ class ProductoHandler:
                            "de datos. Se procederá a consultar el GID a "
                            "Shopify y a guardar el resultado obtenido.")
             linea = Mlinea.parse_obj(linea)
-            return conexion.obtenerGidColeccion(linea.nombre)
+            coleccion = ColeccionHandler(linea)
+            coleccion.NewImage.shopifyGID = (
+                conexion.obtenerGidColeccion(linea.nombre)
+            )
+            coleccion.actualizarGidBD()
+            return coleccion.NewImage.shopifyGID
         except IndexError:
             pass
         try:
-            coleccion = ColeccionHandler(linea)
             coleccion.crear()
             return coleccion.NewImage.shopifyGID
         except Exception:
@@ -198,9 +199,6 @@ class ProductoHandler:
 
     def _modificarInventario(self) -> str:
         try:
-            cambios = McambiosInventario.parse_obj(self.cambios.dict(
-                by_alias=True, exclude_none=True, exclude_unset=True
-            ))
             delta_act = (self.cambios.stock_act - self.OldImage.stock_act
                          if self.cambios.stock_act else 0)
             delta_com = (self.cambios.stock_com - self.OldImage.stock_com
@@ -226,9 +224,6 @@ class ProductoHandler:
 
     def _modificarVariante(self) -> str:
         try:
-            cambios = McambiosVariante.parse_obj(self.cambios.dict(
-                exclude_none=True, exclude_unset=True
-            ))
             variantInput = MproductVariantInput.parse_obj(
                 self.cambios.dict(exclude_none=True, by_alias=True))
             # variantInput.price = getattr(cambios,
@@ -248,9 +243,6 @@ class ProductoHandler:
 
     def _modificarProducto(self) -> str:
         try:
-            cambios = McambiosProducto.parse_obj(
-                self.cambios.dict(exclude_none=True, exclude_unset=True)
-            )
             status = {
                 None: None,
                 True: "ACTIVE",
