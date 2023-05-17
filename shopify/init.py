@@ -1,11 +1,7 @@
-import logging
 from shopify.handlers.eventHandler import EventHandler
+import my_logging
 
-logging.basicConfig(
-    format='%(asctime)s;%(name)-15s;%(levelname)-8s;%(message)s',
-    level=logging.DEBUG
-)
-logger = logging.getLogger("Shopify")
+logger = my_logging.getLogger("shopify")
 
 
 def event_handler(event, context):
@@ -16,11 +12,9 @@ def event_handler(event, context):
             r.append(EventHandler(e).ejecutar())
             logger.debug(r[-1])
         except Exception as err:
-            mensaje = ("Ocurrió un error manejado el evento. "
+            mensaje = (f"Ocurrió un error manejado el evento:\n{e}."
                        f"Se levantó la excepción '{err}'.")
-            logger.exception(mensaje)
-            logger.debug(f"Evento recibido:\n{e}")
-            r.append({"status": "ERROR", "respuesta": mensaje})
+            raise Exception(mensaje) from err
 
     logger.info("*** FIN LAMBDA SHOPIFY ***")
     return r

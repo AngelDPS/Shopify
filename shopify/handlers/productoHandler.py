@@ -102,6 +102,10 @@ class ProductoHandler:
             return coleccion.NewImage.shopifyGID
         except IndexError:
             pass
+        except UnboundLocalError:
+            raise ValueError(f"El código de línea '{co_lin}' no parece existir"
+                             " en la base de datos para la tienda "
+                             f"{codigoTienda}")
         try:
             coleccion.crear()
             return coleccion.NewImage.shopifyGID
@@ -234,7 +238,7 @@ class ProductoHandler:
                 return "Actualización de variante."
             else:
                 logger.info("La información suministrada no produjo cambios a"
-                            "la variante del producto.")
+                            " la variante del producto.")
                 return "Variante no actualizada."
         except Exception:
             logger.exception("Se encontró un problema actualizando la variante"
@@ -286,7 +290,15 @@ class ProductoHandler:
             if not self.OldImage:
                 respuesta = self.crear()
             elif self.cambios.dict(exclude_none=True, exclude_unset=True):
-                respuesta = self.modificar()
+                if self.NewImage.shopifyGID:
+                    respuesta = self.modificar()
+                else:
+                    logger.warning("En el evento no se encontró el GID de "
+                                   "Shopify proveniente de la base de datos. "
+                                   "Se asume que el producto correspondiente "
+                                   "no existe en Shopify. Se creará un "
+                                   "producto nuevo con la data actualizada.")
+                    respuesta = self.crear()
             else:
                 logger.info("Los cambios encontrados no ameritan "
                             "actualizaciones en Shopify.")

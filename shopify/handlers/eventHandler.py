@@ -111,10 +111,6 @@ class EventHandler:
                             "realizar.")
                 return {"status": "OK",
                         "respuesta": "No se realizaron acciones."}
-        except Exception as err:
-            mensaje = ("Ocurrió un error ejecutando el evento. "
-                       f"Se levantó la excepción '{err}'.")
-            logger.exception(mensaje)
-            logger.debug(f"{self.NewImage = }")
-            logger.debug(f"{self.OldImage = }")
-            return {"status": "ERROR", "respuesta": mensaje}
+        except Exception:
+            logger.exception("Ocurrió un error ejecutando el evento.")
+            raise
