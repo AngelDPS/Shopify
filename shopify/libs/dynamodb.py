@@ -1,8 +1,11 @@
 import boto3
-from boto3.dynamodb.conditions import Key, Attr
+from boto3.dynamodb.conditions import Attr
+from os import environ
 
 dynamodb = boto3.resource("dynamodb")
-tabla = dynamodb.Table("angel-db")
+# TODO: Aquí se obtiene y usa el parámetro de configuración para la base de
+# datos de DynamoDB.
+tabla = dynamodb.Table(environ["DYNAMODB_TABLE"])
 
 
 def actualizarGidArticulo(PK: str, SK: str, GID: str):
@@ -144,7 +147,8 @@ def actualizarGidPublicacionesTienda(codigoCompania: str, codigoTienda: str,
 
 def consultarArticulos(co_art: str, codigoTienda: str):
     respuesta = tabla.scan(
-        #KeyConditionExpression=Key("PK").eq(f"GENERICO2022#DLTVA#{co_art}")#,
-        FilterExpression=(Attr("co_art").eq(co_art) & Attr("codigoTienda").ne(codigoTienda))
+        FilterExpression=(
+            Attr("co_art").eq(co_art) & Attr("codigoTienda").ne(codigoTienda)
+        )
     )
     return respuesta

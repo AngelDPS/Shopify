@@ -1,10 +1,27 @@
 from shopify.handlers.eventHandler import EventHandler
-import my_logging
+import shopify.libs.my_logging as my_logging
+from typing import Any
 
 logger = my_logging.getLogger("shopify")
 
 
-def event_handler(event, context):
+def event_handler(event: list[dict], context: Any) -> list[dict[str, str]]:
+    """Manipulador de los eventos de entrada provenientes de
+    una base de datos DynamoDB con el registro de inventario para
+    ser manejados en una tienda de Shopify.
+
+    Args:
+        event (list[dict]): Lista de eventos provenientes de DynamoDB
+        context (Any): context
+
+    Raises:
+        Exception: Levanta una excepción en caso de falla general. Trae consigo
+        el evento que causó la excepción y la excepción padre que lo generó.
+
+    Returns:
+        list[dict[str, str]]: Lista de diccionarios con los mensajes
+        retornados por cada evento procesado.
+    """
     logger.info("*** INICIO LAMBDA SHOPIFY ***")
     r = []
     for e in event:
@@ -46,7 +63,7 @@ if __name__ == "__main__":
                         "S": "METADATA"
                     },
                     "art_des": {
-                        "S": "ABRAZADERA EMT 2\"  "
+                        "S": "ABRAZADERA EMT 2\" ADPS "
                     },
                     "cantidad_empaque": {
                         "N": "0"
@@ -116,23 +133,6 @@ if __name__ == "__main__":
                     },
                     "updated_at": {
                         "S": "2023-04-14T18:52:12.427940Z"
-                    },
-                    "shopifyGID": {
-                        "M": {
-                            "producto": {
-                                "S": "gid://shopify/Product/8248673206570"
-                            },
-                            "variante": {
-                                "M": {
-                                    "id": {
-                                        "S": "gid://shopify/ProductVariant/44883756613930"
-                                    },
-                                    "inventario": {
-                                        "S": "gid://shopify/InventoryItem/46955267129642"
-                                    }
-                                }
-                            }
-                        }
                     }
                 },
                 "OldImage": {
@@ -143,7 +143,7 @@ if __name__ == "__main__":
                         "S": "METADATA"
                     },
                     "art_des": {
-                        "S": "ABRAZADERA EMT 2\"  "
+                        "S": "ABRAZADERA EMT 2\" ADPS "
                     },
                     "cantidad_empaque": {
                         "N": "0"
@@ -161,7 +161,7 @@ if __name__ == "__main__":
                         "S": "ACCE13"
                     },
                     "co_lin": {
-                        "S": "10"
+                        "S": "NO EXISTE"
                     },
                     "created_at": {
                         "S": "2023-04-14T18:52:12.427940Z"
@@ -217,15 +217,15 @@ if __name__ == "__main__":
                     "shopifyGID": {
                         "M": {
                             "producto": {
-                                "S": "gid://shopify/Product/8248673206570"
+                                "S": "gid://shopify/Product/8254695604522"
                             },
                             "variante": {
                                 "M": {
                                     "id": {
-                                        "S": "gid://shopify/ProductVariant/44883756613930"
+                                        "S": "gid://shopify/ProductVariant/44913176150314"
                                     },
                                     "inventario": {
-                                        "S": "gid://shopify/InventoryItem/46955267129642"
+                                        "S": "gid://shopify/InventoryItem/46984842740010"
                                     }
                                 }
                             }
@@ -240,8 +240,8 @@ if __name__ == "__main__":
         }
     ]
 
-    cambio = {"co_lin": {
-        "S": "11"
+    cambio = {"habilitado": {
+        "N": "0"
     }}
     event[0]["dynamodb"]["NewImage"] |= cambio
 

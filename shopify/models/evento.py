@@ -17,15 +17,15 @@ class Marticulo(BaseModel):
     codigoTienda: str | None = None
     co_art: str | None = None
     co_lin: str | None = None
-    prec_vta1: Decimal | None = Field(None, alias='precio')
-    prec_vta2: Decimal | None = Field(None, alias='precio')
-    prec_vta3: Decimal | None = Field(None, alias='precio')
+    prec_vta1: Decimal | None = Field(None, alias='price')
+    prec_vta2: Decimal | None = Field(None, alias='price')
+    prec_vta3: Decimal | None = Field(None, alias='price')
     stock_act: int | None = None
     stock_com: int | None = None
     codigo_barra: str | None = None
     referencia: str | None = None
     marca: str | None = None
-    habilitado: bool | None = None
+    habilitado: bool | None | str = Field(None, alias='status')
     shopifyGID: dict | None = None
     PK: str | None = None
     SK: str | None = None

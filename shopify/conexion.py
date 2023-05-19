@@ -13,12 +13,16 @@ import os
 logger = logging.getLogger(__name__)
 
 try:
+    # TODO: Aquí se obtiene el parámetro de configuración para el
+    # identificador de la tienda en Shopify.
     SHOP = os.environ['SHOPIFY_SHOP']
 except KeyError:
     logger.exception("No se encontró en la variable de ambiente 'SHOPIFY_SHOP'"
                      " el identificador del URL de la tienda de shopify.")
     raise
 try:
+    # TODO: Aquí se obtiene el parámetro de configuración para el
+    # token de acceso de la API de administrador en Shopify.
     ACCESS_TOKEN = os.environ['SHOPIFY_ACCESS_TOKEN']
 except KeyError:
     logger.exception("No se encontró en la variable de ambiente "
@@ -27,8 +31,12 @@ except KeyError:
     raise
 
 API_VERSION: str = "2023-04"
+# TODO: Aquí se usa el parámetro de configuración para el
+# identificador de la tienda en Shopify.
 URL = f"https://{SHOP}.myshopify.com/admin/api/{API_VERSION}/graphql.json"
 
+# TODO: Aquí se usa el parámetro de configuración para el
+# token de acceso de la API de administrador en Shopify.
 transport = RequestsHTTPTransport(
     URL,
     headers={'X-Shopify-Access-Token': ACCESS_TOKEN},
