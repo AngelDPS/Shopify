@@ -1,7 +1,7 @@
 import logging
 from shopify.models.evento import Mlinea
 from re import search
-import dynamodb
+import shopify.libs.dynamodb as dynamodb
 import shopify.conexion as conexion
 
 logger = logging.getLogger("shopify.coleccionHandler")

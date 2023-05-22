@@ -10,7 +10,7 @@ class EventHandler:
 
     @staticmethod
     def deserializar(Image: dict) -> dict:
-        """Deserializa un diccionario en serializado segun DynamoDB
+        """Deserializa un diccionario serializado segun DynamoDB
 
         Args:
             Image (dict): Diccionario serializado segun DynamoDB
@@ -30,17 +30,18 @@ class EventHandler:
             raise
 
     @staticmethod
-    def formatearEvento(evento: dict) -> Mevento:
-        """Recibe el evento y lo analiza para su posterior manipulación.
+    def formatearEvento(evento: dict) -> tuple[Mimage | None]:
+        """Recibe el evento y lo formatea, regresando las imágenes
+        (Old y New) de la data enviada por la base de datos para su posterior
+        manipulación.
 
         Args:
-            evento (list): Evento de AWS dentro de una lista.
-
-        Raises:
-            KeyError: En caso de que el evento no tenga los campos esperados.
+            evento (dict): Evento mandado por una acción de DynamoDB.
 
         Returns:
-            Mevento: Objeto con los campos de interés del evento.
+            tuple[Mimage | None]: Tupla con las imágenes modeladas de la base
+            de datos, New y Old, deserealizadas. En caso de no haber OldImage
+            el segundo valor es igual a None.
         """
         try:
             resultado = evento['dynamodb']
@@ -89,17 +90,31 @@ class EventHandler:
         """Constructor de la instancia encargada de procesar el evento
 
         Args:
-            evento (list): Evento de AWS dentro de una lista.
+            evento (dict): Evento accionado por DynamoDB.
         """
         self.NewImage, self.OldImage = EventHandler.formatearEvento(evento)
         self.cambios = self.obtenerCambios(self.NewImage, self.OldImage)
         logger.debug(f'{self.cambios = }')
 
-    def obtenerHandler(self):
-        # TODO: Revisar la selección de clase.
+    def obtenerHandler(self) -> ProductoHandler:
+        """Obtiene un manipulador según el tipo de registro que accionó el
+        evento.
+
+        Returns:
+            ProductoHandler: El manipulador adecuado para el evento del
+            registro.
+        """
+        # TODO: Expandir la selección de clase.
         return ProductoHandler(self.NewImage, self.OldImage, self.cambios)
 
-    def ejecutar(self):
+    def ejecutar(self) -> dict[str, str]:
+        """Método encargado de ejecutar la acción solicitada por el evento ya
+        procesado.
+
+        Returns:
+            dict[str, str]: Diccionario con la información del estado de la
+            acción y el resultado obtenido.
+        """
         try:
             if self.cambios or not self.OldImage:
                 logger.info("Se encontró inserción o cambios a realizar.")
@@ -111,10 +126,6 @@ class EventHandler:
                             "realizar.")
                 return {"status": "OK",
                         "respuesta": "No se realizaron acciones."}
-        except Exception as err:
-            mensaje = ("Ocurrió un error ejecutando el evento. "
-                       f"Se levantó la excepción '{err}'.")
-            logger.exception(mensaje)
-            logger.debug(f"{self.NewImage = }")
-            logger.debug(f"{self.OldImage = }")
-            return {"status": "ERROR", "respuesta": mensaje}
+        except Exception:
+            logger.exception("Ocurrió un error ejecutando el evento.")
+            raise

@@ -1,14 +1,27 @@
-import logging
 from shopify.handlers.eventHandler import EventHandler
+import shopify.libs.my_logging as my_logging
+from typing import Any
 
-logging.basicConfig(
-    format='%(asctime)s;%(name)-15s;%(levelname)-8s;%(message)s',
-    level=logging.DEBUG
-)
-logger = logging.getLogger("Shopify")
+logger = my_logging.getLogger("shopify")
 
 
-def event_handler(event, context):
+def event_handler(event: list[dict], context: Any) -> list[dict[str, str]]:
+    """Manipulador de los eventos de entrada provenientes de
+    una base de datos DynamoDB con el registro de inventario para
+    ser manejados en una tienda de Shopify.
+
+    Args:
+        event (list[dict]): Lista de eventos provenientes de DynamoDB
+        context (Any): context
+
+    Raises:
+        Exception: Levanta una excepción en caso de falla general. Trae consigo
+        el evento que causó la excepción y la excepción padre que lo generó.
+
+    Returns:
+        list[dict[str, str]]: Lista de diccionarios con los mensajes
+        retornados por cada evento procesado.
+    """
     logger.info("*** INICIO LAMBDA SHOPIFY ***")
     r = []
     for e in event:
@@ -16,11 +29,9 @@ def event_handler(event, context):
             r.append(EventHandler(e).ejecutar())
             logger.debug(r[-1])
         except Exception as err:
-            mensaje = ("Ocurrió un error manejado el evento. "
+            mensaje = (f"Ocurrió un error manejado el evento:\n{e}."
                        f"Se levantó la excepción '{err}'.")
-            logger.exception(mensaje)
-            logger.debug(f"Evento recibido:\n{e}")
-            r.append({"status": "ERROR", "respuesta": mensaje})
+            raise Exception(mensaje) from err
 
     logger.info("*** FIN LAMBDA SHOPIFY ***")
     return r

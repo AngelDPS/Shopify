@@ -62,7 +62,7 @@ class MproductInput(BaseModel):
     title: str | None = Field(None, alias='art_des')
     descriptionHtml: str | None = Field(None, alias='des_shopify')
     productType: str | None = None
-    status: ProductStatus | None = None
+    status: ProductStatus | None = Field(None, alias='habilitado')
     collectionsToJoin: list[str] | None = None
     tags: list[str] | None = None
     vendor: str | None = Field(None, alias='marca')
