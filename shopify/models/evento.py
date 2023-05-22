@@ -17,6 +17,7 @@ class Marticulo(BaseModel):
     codigoTienda: str | None = None
     co_art: str | None = None
     co_lin: str | None = None
+    des_shopify: str | None = None
     prec_vta1: Decimal | None = Field(None, alias='precio')
     prec_vta2: Decimal | None = Field(None, alias='precio')
     prec_vta3: Decimal | None = Field(None, alias='precio')
@@ -26,6 +27,7 @@ class Marticulo(BaseModel):
     referencia: str | None = None
     marca: str | None = None
     habilitado: bool | None = None
+    imagen_url: list[str] | None = None
     shopifyGID: dict | None = None
     PK: str | None = None
     SK: str | None = None

@@ -30,7 +30,7 @@ if __name__ == "__main__":
     event = [
         {
             "eventID": "a47d122d7bfc042520063c173ce48fff",
-            "eventName": "MODIFY",
+            "eventName": "INSERT",
             "eventVersion": "1.1",
             "eventSource": "aws:dynamodb",
             "awsRegion": "us-east-2",
@@ -41,21 +41,18 @@ if __name__ == "__main__":
                         "S": "METADATA"
                     },
                     "PK": {
-                        "S": "GENERICO2022#DLTVA#ACCE13"
+                        "S": "GENERICO2022#DLTVA#1005011A1"
                     }
                 },
                 "NewImage": {
                     "PK": {
-                        "S": "GENERICO2022#DLTVA#ACCE13"
+                        "S": "GENERICO2022#DLTVA#1005011A1"
                     },
                     "SK": {
                         "S": "METADATA"
                     },
                     "art_des": {
-                        "S": "ABRAZADERA EMT 2\"  "
-                    },
-                    "cantidad_empaque": {
-                        "N": "0"
+                        "S": "VOLANTE MOTOR CHANA-SAIC"
                     },
                     "codigoCompania": {
                         "S": "GENERICO2022"
@@ -63,47 +60,72 @@ if __name__ == "__main__":
                     "codigoTienda": {
                         "S": "DLTVA"
                     },
-                    "codigo_barra": {
-                        "NULL": True
-                    },
                     "co_art": {
-                        "S": "ACCE13"
+                        "S": "1005011A1"
                     },
                     "co_lin": {
                         "S": "10"
                     },
                     "created_at": {
-                        "S": "2023-04-14T18:52:12.427940Z"
+                        "S": "2023-05-18T11:50:26.134847Z"
                     },
                     "entity": {
                         "S": "articulos"
                     },
+                    "fx_costos": {
+                        "S": "d208b81bcae86d4354120132c9380157"
+                    },
                     "habilitado": {
                         "N": "1"
+                    },
+                    "imagen_url": {
+                        "L": [
+                            {
+                                "S": "articulo_1005011A1_479.webp"
+                            },
+                            {
+                                "S": "articulo_1005011A1_228.webp"
+                            }
+                        ]
+                    },
+                    "info": {
+                        "NULL": True
                     },
                     "iva": {
                         "N": "16"
                     },
                     "marca": {
-                        "NULL": True
+                        "S": "CHANA"
+                    },
+                    "modelo": {
+                        "S": "CHANA SV/DC"
                     },
                     "moneda": {
                         "N": "2"
                     },
                     "prec_vta1": {
-                        "N": "0.4"
+                        "N": "63"
                     },
                     "prec_vta2": {
-                        "N": "0.48"
+                        "N": "70"
                     },
                     "prec_vta3": {
-                        "N": "0.53"
+                        "N": "83"
+                    },
+                    "prec_vta4": {
+                        "N": "95"
+                    },
+                    "prec_vta5": {
+                        "N": "0"
+                    },
+                    "prec_vta6": {
+                        "N": "0"
                     },
                     "referencia": {
-                        "NULL": True
+                        "S": "CHASVD0200136"
                     },
                     "stock_act": {
-                        "N": "10"
+                        "N": "12"
                     },
                     "stock_com": {
                         "N": "0"
@@ -112,130 +134,13 @@ if __name__ == "__main__":
                         "S": "TIENDA"
                     },
                     "ubicacion": {
-                        "S": "P01"
+                        "S": "C3G11"
                     },
                     "unidad": {
                         "S": "PZA"
                     },
-                    "unidad_empaque": {
-                        "NULL": True
-                    },
                     "updated_at": {
-                        "S": "2023-04-14T18:52:12.427940Z"
-                    },
-                    "shopifyGID": {
-                        "M": {
-                            "producto": {
-                                "S": "gid://shopify/Product/8248673206570"
-                            },
-                            "variante": {
-                                "M": {
-                                    "id": {
-                                        "S": "gid://shopify/ProductVariant/44883756613930"
-                                    },
-                                    "inventario": {
-                                        "S": "gid://shopify/InventoryItem/46955267129642"
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                "OldImage": {
-                    "PK": {
-                        "S": "GENERICO2022#DLTVA#ACCE13"
-                    },
-                    "SK": {
-                        "S": "METADATA"
-                    },
-                    "art_des": {
-                        "S": "ABRAZADERA EMT 2\"  "
-                    },
-                    "cantidad_empaque": {
-                        "N": "0"
-                    },
-                    "codigoCompania": {
-                        "S": "GENERICO2022"
-                    },
-                    "codigoTienda": {
-                        "S": "DLTVA"
-                    },
-                    "codigo_barra": {
-                        "NULL": True
-                    },
-                    "co_art": {
-                        "S": "ACCE13"
-                    },
-                    "co_lin": {
-                        "S": "10"
-                    },
-                    "created_at": {
-                        "S": "2023-04-14T18:52:12.427940Z"
-                    },
-                    "entity": {
-                        "S": "articulos"
-                    },
-                    "habilitado": {
-                        "N": "1"
-                    },
-                    "iva": {
-                        "N": "16"
-                    },
-                    "marca": {
-                        "NULL": True
-                    },
-                    "moneda": {
-                        "N": "2"
-                    },
-                    "prec_vta1": {
-                        "N": "0.4"
-                    },
-                    "prec_vta2": {
-                        "N": "0.48"
-                    },
-                    "prec_vta3": {
-                        "N": "0.53"
-                    },
-                    "referencia": {
-                        "NULL": True
-                    },
-                    "stock_act": {
-                        "N": "10"
-                    },
-                    "stock_com": {
-                        "N": "0"
-                    },
-                    "tipo": {
-                        "S": "TIENDA"
-                    },
-                    "ubicacion": {
-                        "S": "P01"
-                    },
-                    "unidad": {
-                        "S": "PZA"
-                    },
-                    "unidad_empaque": {
-                        "NULL": True
-                    },
-                    "updated_at": {
-                        "S": "2023-04-14T18:52:12.427940Z"
-                    },
-                    "shopifyGID": {
-                        "M": {
-                            "producto": {
-                                "S": "gid://shopify/Product/8248673206570"
-                            },
-                            "variante": {
-                                "M": {
-                                    "id": {
-                                        "S": "gid://shopify/ProductVariant/44883756613930"
-                                    },
-                                    "inventario": {
-                                        "S": "gid://shopify/InventoryItem/46955267129642"
-                                    }
-                                }
-                            }
-                        }
+                        "S": "2023-05-18T11:50:26.134847Z"
                     }
                 },
                 "SequenceNumber": "4911100000000022879305420",
@@ -246,9 +151,9 @@ if __name__ == "__main__":
         }
     ]
 
-    cambio = {"co_lin": {
-        "S": "11"
-    }}
-    event[0]["dynamodb"]["NewImage"] |= cambio
+    # cambio = {"co_lin": {
+    #     "S": "11"
+    # }}
+    # event[0]["dynamodb"]["NewImage"] |= cambio
 
     event_handler(event, None)

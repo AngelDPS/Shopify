@@ -140,11 +140,25 @@ class ProductoHandler:
                              "publicación.")
             raise
 
+    def obtenerUrls(self) -> tuple[list[str]]:
+        base_url = (
+            'https://angelbucket-test.s3.us-east-2.amazonaws.com/imagenes/{}'
+        )
+        self.NewImage.imagen_url = ([base_url.format(ext) for ext
+                                     in self.NewImage.imagen_url]
+                                    if self.NewImage.imagen_url else None)
+
+        self.OldImage.imagen_url = ([base_url.format(ext) for ext
+                                     in self.OldImage.imagen_url]
+                                    if self.OldImage.imagen_url else None)
+        return self.NewImage.imagen_url, self.OldImage.imagen_url
+
     def __init__(self, NewImage: Marticulo, OldImage: Marticulo = None,
                  cambios: Marticulo = None):
         self.NewImage = NewImage
-        self.OldImage = OldImage
+        self.OldImage = OldImage or Marticulo()
         self.cambios = cambios or Marticulo()
+        self.obtenerUrls()
         self.usar_precio = self.obtenerCampoPrecio()
         preciosIgnorar = ['prec_vta1', 'prec_vta2', 'prec_vta3']
         preciosIgnorar.remove(self.usar_precio)
@@ -283,7 +297,7 @@ class ProductoHandler:
 
     def ejecutar(self):
         try:
-            if not self.OldImage:
+            if not self.OldImage.dict(exclude_none=True, exclude_unset=True):
                 respuesta = self.crear()
             elif self.cambios.dict(exclude_none=True, exclude_unset=True):
                 respuesta = self.modificar()
