@@ -17,6 +17,7 @@ class Marticulo(BaseModel):
     codigoTienda: str | None = None
     co_art: str | None = None
     co_lin: str | None = None
+    des_shopify: str | None = None
     prec_vta1: Decimal | None = Field(None, alias='price')
     prec_vta2: Decimal | None = Field(None, alias='price')
     prec_vta3: Decimal | None = Field(None, alias='price')

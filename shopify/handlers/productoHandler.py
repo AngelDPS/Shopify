@@ -4,6 +4,7 @@ from shopify.models.producto import (
     MproductVariantInput,
     MinventoryLevelInput
 )
+from shopify.models.misc import McreateMediaInput
 from shopify.models.evento import (
     Marticulo,
     Mlinea
@@ -47,12 +48,12 @@ class ProductoHandler:
                              "articulos.")
             raise
 
-    def obtenerGidTienda(self, use_old: bool = False) -> str:
+    def obtenerGidTienda(self, from_old: bool = False) -> str:
         """Función para obtener el GID asociado a la tienda en la base de datos
         especificada por el codigoTienda guardado en la instancia.
 
         Args:
-            use_old (bool): Booleano usado para indicar si se utiliza
+            from_old (bool): Booleano usado para indicar si se utiliza
             OldImage para extraer el codigo de tienda del artículo
 
         Raises:
@@ -62,7 +63,7 @@ class ProductoHandler:
         Returns:
             str: El GID de shopify asociado al código de tienda del artículo.
         """
-        codigoTienda = (self.NewImage.codigoTienda if not use_old
+        codigoTienda = (self.NewImage.codigoTienda if not from_old
                         else self.OldImage.codigoTienda)
         try:
             tienda = dynamodb.obtenerTienda(
@@ -93,12 +94,12 @@ class ProductoHandler:
             logger.exception("No se pudo obtener el GID de la tienda.")
             raise
 
-    def obtenerGidColeccion(self, use_old: bool = False) -> str:
+    def obtenerGidColeccion(self, from_old: bool = False) -> str:
         """Función para obtener el GID asociado a la línea en la base de datos
         especificada por el co_lin y codigoTienda guardados en la instancia.
 
         Args:
-            use_old (bool): Booleano usado para indicar si se utiliza
+            from_old (bool): Booleano usado para indicar si se utiliza
             OldImage para extraer el codigoTienda y co_lin del artículo
 
         Raises:
@@ -108,9 +109,9 @@ class ProductoHandler:
         Returns:
             str: El GID de shopify asociado al código de línea del artículo.
         """
-        codigoTienda = (self.NewImage.codigoTienda if not use_old
+        codigoTienda = (self.NewImage.codigoTienda if not from_old
                         else self.OldImage.codigoTienda)
-        co_lin = (self.NewImage.co_lin if not use_old
+        co_lin = (self.NewImage.co_lin if not from_old
                   else self.OldImage.co_lin)
         try:
             linea = dynamodb.obtenerLinea(
@@ -147,19 +148,19 @@ class ProductoHandler:
             logger.exception("No se pudo obtener el GID de la línea.")
             raise
 
-    def obtenerGidPublicaciones(self, use_old: bool = False) -> str:
+    def obtenerGidPublicaciones(self, from_old: bool = False) -> str:
         """Función para obtener el GID de los canales de publicación
         asociados a la tienda en la base de datos
         especificada por el codigoTienda guardado en la instancia.
 
         Args:
-            use_old (bool): Booleano usado para indicar si se utiliza
+            from_old (bool): Booleano usado para indicar si se utiliza
             OldImage para extraer el codigo de tienda del artículo
 
         Returns:
             str: El GID de shopify asociado al código de tienda del artículo.
         """
-        codigoTienda = (self.NewImage.codigoTienda if not use_old
+        codigoTienda = (self.NewImage.codigoTienda if not from_old
                         else self.OldImage.codigoTienda)
         try:
             tienda = dynamodb.obtenerTienda(
@@ -189,21 +190,54 @@ class ProductoHandler:
                              "publicación.")
             raise
 
-    def obtenerUrls(self) -> tuple[list[str]]:
+    class imagenUrl(str):
         base_url = (
-            'https://angelbucket-test.s3.us-east-2.amazonaws.com/imagenes/{}'
+            'https://angelbucket-test.s3.us-east-2.amazonaws.com/imagenes/'
         )
-        self.NewImage.imagen_url = ([base_url.format(ext) for ext
-                                     in self.NewImage.imagen_url]
-                                    if self.NewImage.imagen_url else None)
 
-        self.OldImage.imagen_url = ([base_url.format(ext) for ext
+        def __new__(self, fname: str):
+            instance = super().__new__(self, self.base_url + fname)
+            return instance
+
+        def __init__(self, fname: str):
+            self.fname = fname
+            super().__init__()
+
+    def obtenerUrls(self) -> tuple[list[imagenUrl]]:
+        self.NewImage.imagen_url = ([self.imagenUrl(fname) for fname
+                                     in self.NewImage.imagen_url]
+                                    if self.NewImage.imagen_url else [])
+
+        self.OldImage.imagen_url = ([self.imagenUrl(fname) for fname
                                      in self.OldImage.imagen_url]
-                                    if self.OldImage.imagen_url else None)
+                                    if self.OldImage.imagen_url else [])
         return self.NewImage.imagen_url, self.OldImage.imagen_url
 
-    def __init__(self, NewImage: Marticulo, OldImage: Marticulo = None,
-                 cambios: Marticulo = None):
+    def obtenerGidImagenes(self, from_old: bool = False):
+        urls = (self.NewImage.imagen_url if not from_old
+                else self.OldImage.imagen_url)
+        if urls:
+            gids = {}
+            for url in urls:
+                try:
+                    gids[url.fname] = conexion.obtenerGidImagen(url.fname)
+                    logger.info(f"Se consiguió el archivo '{url.fname}' ya "
+                                "cargado en Shopify.")
+                    continue
+                except IndexError:
+                    pass
+                try:
+                    gids[url.fname] = conexion.cargarImagen(url)
+                    logger.info(f"Se cargó el archivo '{url.fname}' "
+                                "a Shopify.")
+                except Exception:
+                    logger.error(f"Hubo problemas con el archivo '{url.fname}'"
+                                 " y se saltará.")
+                    gids[url.fname] = "gid://shopify/MediaImage/0"
+            return gids
+
+    def __init__(self, eventName: str, NewImage: Marticulo,
+                 OldImage: Marticulo = None, cambios: Marticulo = None):
         """Constructor de la clase
 
         Args:
@@ -216,6 +250,7 @@ class ProductoHandler:
             encontrados en los campos entre la imagen nueva y vieja.
             Defaults to None.
         """
+        self.eventName = eventName
         self.NewImage = NewImage
         self.OldImage = OldImage or Marticulo()
         self.OldImage = OldImage or Marticulo()
@@ -268,8 +303,13 @@ class ProductoHandler:
                 **self.NewImage.dict(by_alias=True,
                                      exclude_none=True),
                 variants=[variantInput],
-                collectionsToJoin=[self.obtenerGidColeccion()])
-            self.NewImage.shopifyGID = conexion.crearProducto(productInput)
+                collectionsToJoin=[self.obtenerGidColeccion()]
+            )
+            mediaInput = [McreateMediaInput(mediaContentType="IMAGE",
+                                            originalSource=url)
+                          for url in self.NewImage.imagen_url]
+            self.NewImage.shopifyGID = conexion.crearProducto(productInput,
+                                                              mediaInput)
             self.publicar()
             self.actualizarGidBD()
             return ["Producto creado!"]
@@ -296,7 +336,7 @@ class ProductoHandler:
                     invId=(
                         self.OldImage.shopifyGID['variante']['inventario']
                     ),
-                    locId=self.obtenerGidTienda(use_old=True)
+                    locId=self.obtenerGidTienda(from_old=True)
                 )
                 return "Cambio de inventario"
             else:
@@ -345,7 +385,7 @@ class ProductoHandler:
             if self.cambios.co_lin:
                 productInput.collectionsToJoin = [self.obtenerGidColeccion()]
                 productInput.collectionsToLeave = [
-                    self.obtenerGidColeccion(use_old=True)
+                    self.obtenerGidColeccion(from_old=True)
                 ]
             if productInput.dict(exclude_none=True, exclude_unset=True):
                 productInput.id = self.OldImage.shopifyGID["producto"]
@@ -358,6 +398,44 @@ class ProductoHandler:
         except Exception:
             logger.exception("Se encontró un problema actualizando el "
                              "producto.")
+            raise
+
+    def _cambiosImagenes(self):
+        try:
+            urls_anexados = list(
+                set(self.NewImage.imagen_url) - set(self.OldImage.imagen_url)
+            )
+            urls_removidos = list(
+                set(self.OldImage.imagen_url) - set(self.NewImage.imagen_url)
+            )
+            msg = ""
+            if urls_anexados:
+                anexarMediaInput = [McreateMediaInput(mediaContentType="IMAGE",
+                                                      originalSource=url)
+                                    for url in urls_anexados]
+                self.NewImage.shopifyGID['imagenes'] |= (
+                    conexion.anexarImagenArticulo(
+                        self.OldImage.shopifyGID["producto"], anexarMediaInput
+                    )['imagenes']
+                )
+                msg += "Imágenes añadidas."
+            if urls_removidos:
+                eliminarMediaIds = [
+                    self.NewImage.shopifyGID["imagenes"].pop(url.fname)
+                    for url in urls_removidos]
+                conexion.eliminarImagenArticulo(
+                    self.NewImage.shopifyGID["producto"],
+                    eliminarMediaIds
+                )
+                msg += "Imágenes removidas."
+            if not (urls_anexados or urls_removidos):
+                logger.info("La información suministrada no produjo cambios a "
+                            "las imágenes")
+                return "Imágenes no actualizadas."
+            self.actualizarGidBD()
+            return msg
+        except Exception:
+            logger.exception("Hubo problemas actualizando las imágenes.")
             raise
 
     def modificar(self) -> list[str]:
@@ -373,6 +451,7 @@ class ProductoHandler:
             respuestas.append(self._modificarInventario())
             respuestas.append(self._modificarVariante())
             respuestas.append(self._modificarProducto())
+            respuestas.append(self._cambiosImagenes())
             return respuestas
         except Exception:
             logger.exception("No fue posible modificar el producto.")
@@ -386,7 +465,7 @@ class ProductoHandler:
             ejecutadas.
         """
         try:
-            if not self.OldImage.dict(exclude_none=True, exclude_unset=True):
+            if self.eventName == "INSERT":
                 respuesta = self.crear()
             elif self.cambios.dict(exclude_none=True, exclude_unset=True):
                 if self.NewImage.shopifyGID:

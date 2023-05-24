@@ -7,6 +7,7 @@ from gql.transport.exceptions import (
 )
 from shopify.models.producto import MproductInput, MproductVariantInput
 from shopify.models.coleccion import McollectionInput
+from shopify.models.misc import McreateMediaInput
 from shopify.models.evento import Mlinea
 import os
 
@@ -46,7 +47,7 @@ cliente = Client(transport=transport)
 
 
 def execute(request_str: str,
-            operacion: str = None,
+            # operacion: str = None,
             variables: dict = None
             ) -> dict:
     """Envía una consulta de GraphQL usando el transporte inicializado en
@@ -67,8 +68,8 @@ def execute(request_str: str,
     try:
         respuesta = cliente.execute(
             gql(request_str),
-            variable_values=variables,
-            operation_name=operacion
+            variable_values=variables  # ,
+            # operation_name=operacion
         )
         logger.debug(f"{respuesta = }")
     except TransportQueryError as err:
@@ -156,7 +157,8 @@ def publicarRecurso(GID: str, pubIDs: list[str]):
         raise
 
 
-def crearProducto(productInput: MproductInput) -> str:
+def crearProducto(productInput: MproductInput,
+                  mediaInput: list[McreateMediaInput]) -> str:
     try:
         respuesta = execute(
             """
@@ -173,6 +175,13 @@ def crearProducto(productInput: MproductInput) -> str:
                                 }
                             }
                         }
+                        media(first:10) {
+                            nodes {
+                                ... on MediaImage {
+                                    id
+                                }
+                            }
+                        }
                     }
                     userErrors {
                         message
@@ -180,7 +189,9 @@ def crearProducto(productInput: MproductInput) -> str:
                 }
             }
             """,
-            variables={'input': productInput.dict(exclude_none=True)}
+            variables={'input': productInput.dict(exclude_none=True),
+                       'media': [mInput.dict(exclude_none=True)
+                                 for mInput in mediaInput]}
         )
         logger.info("Producto creado exitosamente en Shopify.")
     except Exception:
@@ -195,6 +206,13 @@ def crearProducto(productInput: MproductInput) -> str:
                 'inventario': (respuesta['productCreate']['product']
                                ['variants']['nodes'][0]['inventoryItem']
                                ['id'])
+            },
+            'imagenes': {
+                imInput.originalSource.fname: imNodes['id']
+                for imInput, imNodes in zip(
+                    mediaInput,
+                    respuesta['productCreate']['product']['media']['nodes']
+                )
             }
         }
         return shopifyGID
@@ -413,3 +431,124 @@ def modificarColeccion(linea: Mlinea):
         """,
         variables={'input': collectionInput.dict(exclude_none=True)},
     )
+
+
+def obtenerGidImagen(fname: str) -> str:
+    try:
+        return execute(
+            """
+            query ImageFileId($filename: String) {
+                files(first: 10, query: $filename) {
+                    nodes {
+                        ... on MediaImage {
+                            id
+                        }
+                    }
+                }
+            }
+            """,
+            variables={'filename': f'filename:{fname}'}
+        )['files']['nodes'][0]['id']
+    except IndexError:
+        logger.warning(f"Archivo de imagen con nombre '{fname}' "
+                       "no encontrado en Shopify.")
+        raise
+    except Exception:
+        logger.exception("Error al consultar el GID de colección.")
+        raise
+
+
+def cargarImagen(url: str) -> str:
+    try:
+        return execute(
+            """
+            mutation cargarImagen($input: FileCreateInput!) {
+                fileCreate(files: [$input]) {
+                    files {
+                        ... on MediaImage {
+                            id
+                        }
+                    }
+                }
+            }
+            """,
+            variables={"input": {
+                "contentType": "IMAGE",
+                "originalSource": url
+            }}
+        )['fileCreate']['files'][0]['id']
+    except Exception:
+        logger.exception("Error encontrado al cargar la imagen en Shopify")
+        raise
+
+
+def anexarImagenArticulo(productId: str, mediaInput: list[McreateMediaInput]):
+    try:
+        respuesta = execute(
+            """
+            mutation anexarImagen($productId: ID!,
+                                  $media: [CreateMediaInput!]!) {
+                productCreateMedia(productId: $productId, media: $media) {
+                    media {
+                        ... on MediaImage{
+                            id
+                        }
+                    }
+                    mediaUserErrors {
+                        message
+                    }
+                }
+            }
+            """,
+            variables={'productId': productId,
+                       'media': [mInput.dict(exclude_none=True)
+                                 for mInput in mediaInput]}
+        )
+        if respuesta['productCreateMedia']['mediaUserErrors']:
+            msg = (f"{respuesta['productCreateMedia']['mediaUserErrors']}")
+            logger.exception(msg)
+            raise RuntimeError(msg)
+        logger.info("Imágenes anexadas correctamente.")
+    except Exception:
+        logger.exception("Hubo un problema anexando las imágenes")
+        raise
+    try:
+        shopifyGID = {
+            'imagenes': {
+                imInput.originalSource.fname: imNodes['id']
+                for imInput, imNodes in zip(
+                    mediaInput,
+                    respuesta['productCreateMedia']['media']
+                )
+            }
+        }
+        return shopifyGID
+    except (KeyError, IndexError):
+        logger.exception("Formato inesperado de respuesta para la creación "
+                         "del producto.")
+        raise
+
+
+def eliminarImagenArticulo(productId: str, mediaIds: list[str]):
+    try:
+        respuesta = execute(
+            """
+            mutation removerImagen($productId: ID!, $mediaIds: [ID!]!) {
+                productDeleteMedia(productId: $productId,
+                                   mediaIds: $mediaIds) {
+                    mediaUserErrors {
+                        message
+                    }
+                }
+            }
+            """,
+            variables={'productId': productId, 'mediaIds': mediaIds}
+        )
+        if respuesta['productDeleteMedia']['mediaUserErrors']:
+            msg = (f"{respuesta['productDeleteMedia']['mediaUserErrors']}")
+            logger.exception(msg)
+            raise RuntimeError(msg)
+        logger.info("Imágenes eliminadas correctamente.")
+    except Exception:
+        logger.exception("Hubo un problema eliminando las imágenes")
+        raise

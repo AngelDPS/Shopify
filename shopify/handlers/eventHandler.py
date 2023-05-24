@@ -92,6 +92,7 @@ class EventHandler:
         Args:
             evento (dict): Evento accionado por DynamoDB.
         """
+        self.eventName = evento['eventName']
         self.NewImage, self.OldImage = EventHandler.formatearEvento(evento)
         self.cambios = self.obtenerCambios(self.NewImage, self.OldImage)
         logger.debug(f'{self.cambios = }')
@@ -105,7 +106,8 @@ class EventHandler:
             registro.
         """
         # TODO: Expandir la selección de clase.
-        return ProductoHandler(self.NewImage, self.OldImage, self.cambios)
+        return ProductoHandler(self.eventName, self.NewImage, self.OldImage,
+                               self.cambios)
 
     def ejecutar(self) -> dict[str, str]:
         """Método encargado de ejecutar la acción solicitada por el evento ya
@@ -116,7 +118,7 @@ class EventHandler:
             acción y el resultado obtenido.
         """
         try:
-            if self.cambios or not self.OldImage:
+            if self.cambios or self.eventName == "INSERT":
                 logger.info("Se encontró inserción o cambios a realizar.")
                 handler = self.obtenerHandler()
                 r = handler.ejecutar()

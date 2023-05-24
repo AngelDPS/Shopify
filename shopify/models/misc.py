@@ -30,7 +30,7 @@ MediaContentType = Literal["EXTERNAL_VIDEO", "IMAGE", "MODEL_3D", "VIDEO"]
 
 class McreateMediaInput(BaseModel):
     alt: str | None = None
-    mediaContentType: MediaContentType
+    mediaContentType: MediaContentType | None = None
     originalSource: str
 
 
