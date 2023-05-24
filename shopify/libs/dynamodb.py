@@ -1,21 +1,36 @@
-from json import load, dump
-from os import rename
+import boto3
+from boto3.dynamodb.conditions import Attr
+from os import environ
 
-DBpath = 'angel-tabla.json'
+dynamodb = boto3.resource("dynamodb")
+# TODO: Aquí se obtiene y usa el parámetro de configuración para la base de
+# datos de DynamoDB.
+tabla = dynamodb.Table(environ["DYNAMODB_TABLE"])
 
 
 def actualizarGidArticulo(PK: str, SK: str, GID: str):
-    DBpath_temp = DBpath + '.temp'
-    with open(DBpath) as DBfile, open(DBpath_temp, 'w') as DBtemp:
-        DB = load(DBfile)
-        DB.setdefault(PK, {}).setdefault(SK, {})
-        DB[PK][SK]['shopifyGID'] = GID
-        dump(DB, DBtemp)
-    rename(DBpath_temp, DBpath)
+    tabla.update_item(
+        Key={"PK": PK, "SK": SK},
+        UpdateExpression="SET shopifyGID = :productID",
+        ExpressionAttributeValues={":productID": GID}
+    )
 
 
 def obtenerTienda(codigoCompania: str, codigoTienda: str
                   ) -> dict[str, dict[str, str]]:
+    """Función para obtener la data de la tienda dada por codigoTienda.
+    """
+    key = {
+        "PK": f"{codigoCompania.upper()}#TIENDAS",
+        "SK": f"T#{codigoTienda.upper()}"
+    }
+    return tabla.get_item(
+        Key=key
+    )['Item']
+
+
+def obtenerGidTienda(codigoCompania: str, codigoTienda: str
+                     ) -> dict[str, dict[str, str]]:
     """Función para obtener el GID asociado a codigoTienda.
 
     Args:
@@ -25,12 +40,14 @@ def obtenerTienda(codigoCompania: str, codigoTienda: str
     Returns:
         str: El GID de shopify asociado al código de tienda del artículo.
     """
-    PK = f"{codigoCompania.upper()}#TIENDAS"
-    SK = f"T#{codigoTienda.upper()}"
-    with open(DBpath) as DBfile:
-        DB = load(DBfile)
-    tienda = DB[PK][SK]
-    return tienda
+    key = {
+        "PK": f"{codigoCompania.upper()}#TIENDAS",
+        "SK": f"T#{codigoTienda.upper()}"
+    }
+    return tabla.get_item(
+        Key=key,
+        ProjectionExpression="shopifyGID.sucursal"
+    )['Item']
 
 
 def obtenerNombreTienda(codigoCompania: str, codigoTienda: str
@@ -44,91 +61,94 @@ def obtenerNombreTienda(codigoCompania: str, codigoTienda: str
     Returns:
         str: El GID de shopify asociado al código de tienda del artículo.
     """
-    PK = f"{codigoCompania.upper()}#TIENDAS"
-    SK = f"T#{codigoTienda.upper()}"
-    with open(DBpath) as DBfile:
-        DB = load(DBfile)
-    tienda = DB[PK][SK]
-    temp = tienda.copy()
-    for k in tienda:
-        if k == "nombre":
-            continue
-        del temp[k]
-    return temp
+    key = {
+        "PK": f"{codigoCompania.upper()}#TIENDAS",
+        "SK": f"T#{codigoTienda.upper()}"
+    }
+    return tabla.get_item(
+        Key=key,
+        ProjectionExpression="nombre"
+    )['Item']
 
 
 def actualizarGidTienda(codigoCompania: str, codigoTienda: str, GID: str):
-    PK = f"{codigoCompania.upper()}#TIENDAS"
-    SK = f"T#{codigoTienda.upper()}"
-    DBpath_temp = DBpath + '.temp'
-    with open(DBpath) as DBfile, open(DBpath_temp, 'w') as DBtemp:
-        DB = load(DBfile)
-        DB.setdefault(PK, {}).setdefault(SK, {}).setdefault("shopifyGID", {})
-        DB[PK][SK]['shopifyGID']['sucursal'] = GID
-        dump(DB, DBtemp)
-    rename(DBpath_temp, DBpath)
+    key = {
+        "PK": f"{codigoCompania.upper()}#TIENDAS",
+        "SK": f"T#{codigoTienda.upper()}"
+    }
+    tabla.update_item(
+        Key=key,
+        UpdateExpression="SET shopifyGID.sucursal = :gid",
+        ExpressionAttributeValues={
+            ":gid": GID
+        }
+    )
 
 
 def obtenerGidLinea(codigoCompania: str, codigoTienda: str,
                     co_lin: str) -> dict[str, str]:
-    PK = f"{codigoCompania.upper()}#LINEAS"
-    SK = f"T#{codigoTienda}#L#{co_lin}"
-    with open(DBpath) as DBfile:
-        DB = load(DBfile)
-    linea = DB[PK][SK]
-    temp = linea.copy()
-    for k in linea:
-        if k == "shopifyGID":
-            continue
-        del temp[k]
-    return temp
+    key = {
+        "PK": f"{codigoCompania.upper()}#LINEAS",
+        "SK": f"T#{codigoTienda}#L#{co_lin}"
+    }
+    return tabla.get_item(
+        Key=key,
+        ProjectionExpression="shopifyGID"
+    )['Item']
 
 
 def actualizarGidLinea(PK: str, SK: str, GID: str):
-    DBpath_temp = DBpath + '.temp'
-    with open(DBpath) as DBfile, open(DBpath_temp, 'w') as DBtemp:
-        DB = load(DBfile)
-        DB.setdefault(PK, {}).setdefault(SK, {})
-        DB[PK][SK]['shopifyGID'] = GID
-        dump(DB, DBtemp)
-    rename(DBpath_temp, DBpath)
+    tabla.update_item(
+        Key={"PK": PK, "SK": SK},
+        UpdateExpression="SET shopifyGID = :gid",
+        ExpressionAttributeValues={
+            ":gid": GID
+        }
+    )
 
 
 def obtenerLinea(codigoCompania: str, codigoTienda: str,
                  co_lin: str) -> dict[str, any]:
-    PK = f"{codigoCompania.upper()}#LINEAS"
-    SK = f"T#{codigoTienda}#L#{co_lin}"
-    with open(DBpath) as DBfile:
-        DB = load(DBfile)
-    linea = DB[PK][SK]
-    return linea
+    key = {
+        "PK": f"{codigoCompania.upper()}#LINEAS",
+        "SK": f"T#{codigoTienda}#L#{co_lin}"
+    }
+    return tabla.get_item(
+        Key=key
+    )['Item']
 
 
 def obtenerGidPublicacionesTienda(codigoCompania: str, codigoTienda: str
                                   ) -> dict[str, dict[str, str]]:
-    PK = f"{codigoCompania.upper()}#TIENDAS"
-    SK = f"T#{codigoTienda.upper()}"
-    with open(DBpath) as DBfile:
-        DB = load(DBfile)
-    tienda = DB[PK][SK]
-    temp = tienda.copy()
-    for k in tienda:
-        if k == "shopifyGID":
-            continue
-        del temp[k]
-    return temp
+    key = {
+        "PK": f"{codigoCompania.upper()}#TIENDAS",
+        "SK": f"T#{codigoTienda.upper()}"
+    }
+    return tabla.get_item(
+        Key=key,
+        ProjectionExpression="shopifyGID.publicaciones"
+    )['Item']
 
 
 def actualizarGidPublicacionesTienda(codigoCompania: str, codigoTienda: str,
                                      pubIDs: list[str]):
-    PK = f"{codigoCompania.upper()}#TIENDAS"
-    SK = f"T#{codigoTienda.upper()}"
-    DBpath_temp = DBpath + '.temp'
-    with open(DBpath) as DBfile, open(DBpath_temp, 'w') as DBtemp:
-        DB = load(DBfile)
-        (DB.setdefault(PK, {})
-         .setdefault(SK, {}).
-         setdefault('shopifyGID', {}))
-        DB[PK][SK]['shopifyGID']['publicaciones'] = pubIDs
-        dump(DB, DBtemp)
-    rename(DBpath_temp, DBpath)
+    key = {
+        "PK": f"{codigoCompania.upper()}#TIENDAS",
+        "SK": f"T#{codigoTienda.upper()}"
+    }
+    tabla.update_item(
+        Key=key,
+        UpdateExpression="SET shopifyGID.publicaciones = :pubIDs",
+        ExpressionAttributeValues={
+            ":pubIDs": pubIDs
+        }
+    )
+
+
+def consultarArticulos(co_art: str, codigoTienda: str):
+    respuesta = tabla.scan(
+        FilterExpression=(
+            Attr("co_art").eq(co_art) & Attr("codigoTienda").ne(codigoTienda)
+        )
+    )
+    return respuesta
