@@ -1,6 +1,7 @@
 from pydantic import Field, BaseModel as PydanticBaseModel
 from typing import Literal
 from decimal import Decimal
+from enum import Enum
 # from datetime import datetime
 
 
@@ -8,6 +9,11 @@ class BaseModel(PydanticBaseModel):
     class Config:
         allow_population_by_field_name = True
         anystr_strip_whitespace = True
+
+
+class Habilitado(Enum):
+    ARCHIVED = 0
+    ACTIVE = 1
 
 
 class Marticulo(BaseModel):
@@ -18,17 +24,15 @@ class Marticulo(BaseModel):
     co_art: str | None = None
     co_lin: str | None = None
     des_shopify: str | None = None
-    prec_vta1: Decimal | None = Field(None, alias='price')
-    prec_vta2: Decimal | None = Field(None, alias='price')
-    prec_vta3: Decimal | None = Field(None, alias='price')
+    precio: Decimal | None = Field(None, alias='price')
     stock_act: int | None = None
     stock_com: int | None = None
     codigo_barra: str | None = None
     referencia: str | None = None
     marca: str | None = None
-    habilitado: bool | None = None
+    cobra_impuesto: bool = Field(False, alias='taxable')
     imagen_url: list[str] | None = None
-    habilitado: bool | None | str = Field(None, alias='status')
+    habilitado: Habilitado | None | str = Field(None, alias='status')
     shopifyGID: dict | None = None
     PK: str | None = None
     SK: str | None = None
@@ -42,9 +46,7 @@ class McambiosInventario(BaseModel):
 
 
 class McambiosVariante(BaseModel):
-    prec_vta1: Decimal | None = Field(None, alias='precio')
-    prec_vta2: Decimal | None = Field(None, alias='precio')
-    prec_vta3: Decimal | None = Field(None, alias='precio')
+    precio: Decimal | None = Field(None, alias='price')
     codigo_barra: str | None = None
     referencia: str | None = None
 
@@ -82,11 +84,3 @@ class Mtienda(BaseModel):
     codigoTiendaAlt: str | None = None
     # configuraciones:
     # correo
-
-
-Mimage = Marticulo
-
-
-class Mevento(BaseModel):
-    NewImage: Marticulo  # = Field(..., discriminator='entity')
-    OldImage: Marticulo | None = None  # = Field(None, discriminator='entity')

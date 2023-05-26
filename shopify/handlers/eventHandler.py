@@ -1,5 +1,4 @@
 from boto3.dynamodb.types import TypeDeserializer
-from shopify.models.evento import Mevento, Mimage
 from shopify.handlers.productoHandler import ProductoHandler
 from logging import getLogger
 
@@ -30,7 +29,7 @@ class EventHandler:
             raise
 
     @staticmethod
-    def formatearEvento(evento: dict) -> tuple[Mimage | None]:
+    def formatearEvento(evento: dict) -> tuple[dict | None]:
         """Recibe el evento y lo formatea, regresando las imágenes
         (Old y New) de la data enviada por la base de datos para su posterior
         manipulación.
@@ -48,12 +47,11 @@ class EventHandler:
             resultado['NewImage'] = EventHandler.deserializar(
                 resultado['NewImage']
             )
-            resultado['OldImage'] = (EventHandler.deserializar(
-                resultado['OldImage']
+            resultado['OldImage'] = (
+                EventHandler.deserializar(resultado['OldImage'])
+                if evento['eventName'] == "MODIFY" else resultado['NewImage']
             )
-                if resultado.get('OldImage') else None)
-            resultado = Mevento.parse_obj(resultado)
-            return resultado.NewImage, resultado.OldImage
+            return resultado['NewImage'], resultado['OldImage']
         except KeyError:
             logger.exception("Formato inesperado para el evento.\n"
                              "El evento debería tener los objetos\n"
@@ -62,7 +60,7 @@ class EventHandler:
             raise
 
     @staticmethod
-    def obtenerCambios(NewImage: Mimage, OldImage: Mimage) -> Mimage | None:
+    def obtenerCambios(NewImage: dict, OldImage: dict) -> dict:
         """Obtiene los cambios realizados entre dos imágenes, anterior y
         posterior, de un ítem.
 
@@ -78,13 +76,10 @@ class EventHandler:
         """
         cambios = {
             k: v for k, v in NewImage
-            if (v != getattr(OldImage, k) or
-                k == "entity")
-        } if OldImage else {}
-        if len(cambios) > 1:
-            return Mevento(NewImage=cambios).NewImage
-        else:
-            return None
+            if (v != getattr(OldImage, k) and k != "updated_at")
+        }
+        logger.debug(f'{cambios = }')
+        return cambios
 
     def __init__(self, evento: dict):
         """Constructor de la instancia encargada de procesar el evento
@@ -94,8 +89,6 @@ class EventHandler:
         """
         self.eventName = evento['eventName']
         self.NewImage, self.OldImage = EventHandler.formatearEvento(evento)
-        self.cambios = self.obtenerCambios(self.NewImage, self.OldImage)
-        logger.debug(f'{self.cambios = }')
 
     def obtenerHandler(self) -> ProductoHandler:
         """Obtiene un manipulador según el tipo de registro que accionó el
@@ -106,8 +99,8 @@ class EventHandler:
             registro.
         """
         # TODO: Expandir la selección de clase.
-        return ProductoHandler(self.eventName, self.NewImage, self.OldImage,
-                               self.cambios)
+        logger.info("Se idenficó el evento como proveniente de un artículo.")
+        return {'articulos': ProductoHandler}[self.NewImage['entity']]
 
     def ejecutar(self) -> dict[str, str]:
         """Método encargado de ejecutar la acción solicitada por el evento ya
@@ -118,16 +111,9 @@ class EventHandler:
             acción y el resultado obtenido.
         """
         try:
-            if self.cambios or self.eventName == "INSERT":
-                logger.info("Se encontró inserción o cambios a realizar.")
-                handler = self.obtenerHandler()
-                r = handler.ejecutar()
-                return {"status": "OK", "respuesta": r}
-            else:
-                logger.info("No se encontró inserción o cambio necesiaro a"
-                            "realizar.")
-                return {"status": "OK",
-                        "respuesta": "No se realizaron acciones."}
+            handler = self.obtenerHandler()
+            r = handler(self).ejecutar()
+            return {"status": "OK", "respuesta": r}
         except Exception:
             logger.exception("Ocurrió un error ejecutando el evento.")
             raise

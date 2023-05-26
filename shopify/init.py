@@ -155,33 +155,6 @@ if __name__ == "__main__":
                     },
                     "updated_at": {
                         "S": "2023-05-18T11:50:26.134847Z"
-                    },
-                    "shopifyGID": {
-                        "M": {
-                            "producto": {
-                                "S": "gid://shopify/Product/8261363073322"
-                            },
-                            "variante": {
-                                "M": {
-                                    "id": {
-                                        "S": "gid://shopify/ProductVariant/44944245129514"
-                                    },
-                                    "inventario": {
-                                        "S": "gid://shopify/InventoryItem/47016291336490"
-                                    }
-                                }
-                            },
-                            "imagenes": {
-                                "M": {
-                                    "articulo_01R43119R01_876.webp": {
-                                        "S": "gid://shopify/MediaImage/33857652490538"
-                                    },
-                                    "articulo_020945415AA_425.webp": {
-                                        "S": "gid://shopify/MediaImage/33857652523306"
-                                    }
-                                }
-                            }
-                        }
                     }
                 },
                 "OldImage": {
@@ -288,25 +261,25 @@ if __name__ == "__main__":
                     "shopifyGID": {
                         "M": {
                             "producto": {
-                                "S": "gid://shopify/Product/8261363073322"
+                                "S": "gid://shopify/Product/8295525220642"
                             },
                             "variante": {
                                 "M": {
                                     "id": {
-                                        "S": "gid://shopify/ProductVariant/44944245129514"
+                                        "S": "gid://shopify/ProductVariant/45238820110626"
                                     },
                                     "inventario": {
-                                        "S": "gid://shopify/InventoryItem/47016291336490"
+                                        "S": "gid://shopify/InventoryItem/47287093952802"
                                     }
                                 }
                             },
                             "imagenes": {
                                 "M": {
                                     "articulo_01R43119R01_876.webp": {
-                                        "S": "gid://shopify/MediaImage/33857652490538"
+                                        "S": "gid://shopify/MediaImage/33868044239138"
                                     },
                                     "articulo_020945415AA_425.webp": {
-                                        "S": "gid://shopify/MediaImage/33857652523306"
+                                        "S": "gid://shopify/MediaImage/33868044271906"
                                     }
                                 }
                             }
@@ -334,6 +307,6 @@ if __name__ == "__main__":
             }
         ]
     }}
-    event[0]["dynamodb"]["NewImage"] |= cambio
+    # event[0]["dynamodb"]["NewImage"] |= cambio
 
     event_handler(event, None)

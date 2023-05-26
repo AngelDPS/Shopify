@@ -236,8 +236,7 @@ class ProductoHandler:
                     gids[url.fname] = "gid://shopify/MediaImage/0"
             return gids
 
-    def __init__(self, eventName: str, NewImage: Marticulo,
-                 OldImage: Marticulo = None, cambios: Marticulo = None):
+    def __init__(self, evento):
         """Constructor de la clase
 
         Args:
@@ -250,27 +249,34 @@ class ProductoHandler:
             encontrados en los campos entre la imagen nueva y vieja.
             Defaults to None.
         """
-        self.eventName = eventName
-        self.NewImage = NewImage
-        self.OldImage = OldImage or Marticulo()
-        self.OldImage = OldImage or Marticulo()
-        self.cambios = cambios or Marticulo()
+        self.eventName = evento.eventName
+        campo_precio = self.obtenerCampoPrecio()
+        for label in ['NewImage', 'OldImage']:
+            setattr(self, label,
+                    Marticulo.parse_obj(getattr(evento, label)))
+            getattr(self, label).precio = getattr(evento, label)[campo_precio]
+            getattr(self, label).habilitado = (
+                getattr(self, label).habilitado.name
+            )
+        self.cambios = Marticulo.parse_obj(
+            evento.obtenerCambios(self.NewImage, self.OldImage)
+        )
         self.obtenerUrls()
         # TODO: Aquí se usa el parámetro de configuración para el campo de
         # precio.
-        self.usar_precio = self.obtenerCampoPrecio()
-        preciosIgnorar = ['prec_vta1', 'prec_vta2', 'prec_vta3']
-        preciosIgnorar.remove(self.usar_precio)
-        for prec in preciosIgnorar:
-            setattr(self.NewImage, prec, None)
-            setattr(self.OldImage, prec, None)
-            setattr(self.cambios, prec, None)
-        for image in [self.NewImage, self.OldImage, self.cambios]:
-            image.habilitado = {
-                None: None,
-                True: "ACTIVE",
-                False: "ARCHIVED"
-            }[image.habilitado]
+        # self.usar_precio = self.obtenerCampoPrecio()
+        # preciosIgnorar = ['prec_vta1', 'prec_vta2', 'prec_vta3']
+        # preciosIgnorar.remove(self.usar_precio)
+        # for prec in preciosIgnorar:
+        #     setattr(self.NewImage, prec, None)
+        #     setattr(self.OldImage, prec, None)
+        #     setattr(self.cambios, prec, None)
+        # for image in [self.NewImage, self.OldImage, self.cambios]:
+        #    image.habilitado = {
+        #        None: None,
+        #        True: "ACTIVE",
+        #        False: "ARCHIVED"
+        #    }[image.habilitado]
 
     def publicar(self):
         """Publica el artículo en la tienda virtual y punto de venta de

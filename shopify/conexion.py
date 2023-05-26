@@ -92,7 +92,7 @@ def execute(request_str: str,
     else:
         if respuesta[list(respuesta)[0]].get("userErrors"):
             msg = ("No fue posible realizar la operación:\n"
-                   f"{respuesta['userErrors']}")
+                   f"{respuesta[list(respuesta)[0]]['userErrors']}")
             logger.exception(msg)
             raise RuntimeError(msg)
     return respuesta

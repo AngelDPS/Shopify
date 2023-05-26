@@ -1,5 +1,4 @@
 from pydantic import BaseModel as PydanticBaseModel, Field, NonNegativeInt
-from decimal import Decimal
 from typing import Literal
 from shopify.models.misc import (
     MimageInput,
@@ -29,19 +28,19 @@ class MinventoryLevelInput(BaseModel):
 
 
 class MinventoryItemInput(BaseModel):
-    cost: Decimal | None = None
+    cost: float | None = None
     tracked: bool = True
 
 
 class MproductVariantInput(BaseModel):
     options: list[str] | None = None
     price: float | None = Field(None, alias='precio')
-    compareAtPrice: Decimal | None = None
+    compareAtPrice: float | None = None
     barcode: str | None = Field(None, alias='codigo_barra')
     sku: str | None = Field(None, alias='referencia')
     position: NonNegativeInt | None = None
     requiresShipping: bool = True
-    weight: Decimal | None = None
+    weight: float | None = None
     weightUnit: WeightUnit | None = None
     inventoryQuantities: list[MinventoryLevelInput] | None = None
     inventoryItem: MinventoryItemInput = MinventoryItemInput()
@@ -52,7 +51,7 @@ class MproductVariantInput(BaseModel):
     metafields: list[MmetafieldInput] | None = None
     privateMetafields: list[MprivateMetafieldInput] | None = None
     taxCode: str | None = None
-    taxable: bool | None = None
+    taxable: bool = Field(False, alias='cobra_impuesto')
     harmonizedSystemCode: str | None = None
     id: str | None = None
     productId: str | None = None
