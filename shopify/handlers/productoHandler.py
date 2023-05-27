@@ -191,6 +191,7 @@ class ProductoHandler:
             raise
 
     class imagenUrl(str):
+        # TODO: Aquí se define el url para las imágenes.
         base_url = (
             'https://angelbucket-test.s3.us-east-2.amazonaws.com/imagenes/'
         )
@@ -254,6 +255,8 @@ class ProductoHandler:
         for label in ['NewImage', 'OldImage']:
             setattr(self, label,
                     Marticulo.parse_obj(getattr(evento, label)))
+            # TODO: Aquí se usa el parámetro de configuración para el campo de
+            # precio.
             getattr(self, label).precio = getattr(evento, label)[campo_precio]
             getattr(self, label).habilitado = (
                 getattr(self, label).habilitado.name
@@ -262,21 +265,6 @@ class ProductoHandler:
             evento.obtenerCambios(self.NewImage, self.OldImage)
         )
         self.obtenerUrls()
-        # TODO: Aquí se usa el parámetro de configuración para el campo de
-        # precio.
-        # self.usar_precio = self.obtenerCampoPrecio()
-        # preciosIgnorar = ['prec_vta1', 'prec_vta2', 'prec_vta3']
-        # preciosIgnorar.remove(self.usar_precio)
-        # for prec in preciosIgnorar:
-        #     setattr(self.NewImage, prec, None)
-        #     setattr(self.OldImage, prec, None)
-        #     setattr(self.cambios, prec, None)
-        # for image in [self.NewImage, self.OldImage, self.cambios]:
-        #    image.habilitado = {
-        #        None: None,
-        #        True: "ACTIVE",
-        #        False: "ARCHIVED"
-        #    }[image.habilitado]
 
     def publicar(self):
         """Publica el artículo en la tienda virtual y punto de venta de
@@ -363,7 +351,8 @@ class ProductoHandler:
         """
         try:
             variantInput = MproductVariantInput.parse_obj(
-                self.cambios.dict(exclude_none=True, by_alias=True))
+                self.cambios.dict(exclude_none=True, exclude_unset=True,
+                                  by_alias=True))
             if variantInput.dict(exclude_none=True, exclude_unset=True):
                 variantInput.id = self.OldImage.shopifyGID["variante"]["id"]
                 conexion.modificarVarianteProducto(variantInput)
@@ -386,7 +375,8 @@ class ProductoHandler:
         """
         try:
             productInput = MproductInput.parse_obj(
-                self.cambios.dict(by_alias=True, exclude_none=True)
+                self.cambios.dict(by_alias=True, exclude_none=True,
+                                  exclude_unset=True)
             )
             if self.cambios.co_lin:
                 productInput.collectionsToJoin = [self.obtenerGidColeccion()]

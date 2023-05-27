@@ -41,7 +41,8 @@ URL = f"https://{SHOP}.myshopify.com/admin/api/{API_VERSION}/graphql.json"
 transport = RequestsHTTPTransport(
     URL,
     headers={'X-Shopify-Access-Token': ACCESS_TOKEN},
-    retries=3
+    retries=3,
+    timeout=(3.05, 5)
 )
 cliente = Client(transport=transport)
 

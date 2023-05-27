@@ -1,5 +1,6 @@
 import boto3
 from boto3.dynamodb.conditions import Attr
+from botocore.exceptions import ClientError
 from os import environ
 
 dynamodb = boto3.resource("dynamodb")
@@ -76,13 +77,27 @@ def actualizarGidTienda(codigoCompania: str, codigoTienda: str, GID: str):
         "PK": f"{codigoCompania.upper()}#TIENDAS",
         "SK": f"T#{codigoTienda.upper()}"
     }
-    tabla.update_item(
-        Key=key,
-        UpdateExpression="SET shopifyGID.sucursal = :gid",
-        ExpressionAttributeValues={
-            ":gid": GID
-        }
-    )
+    try:
+        tabla.update_item(
+            Key=key,
+            UpdateExpression="SET shopifyGID.sucursal = :gid",
+            ExpressionAttributeValues={
+                ":gid": GID
+            }
+        )
+    except ClientError as err:
+        if err.response['Error']['Code'] == 'ValidationException':
+            tabla.update_item(
+                Key=key,
+                UpdateExpression="SET shopifyGID = :gid",
+                ExpressionAttributeValues={
+                    ":gid": {
+                        "sucursal": GID
+                    }
+                }
+            )
+        else:
+            raise
 
 
 def obtenerGidLinea(codigoCompania: str, codigoTienda: str,
@@ -136,13 +151,27 @@ def actualizarGidPublicacionesTienda(codigoCompania: str, codigoTienda: str,
         "PK": f"{codigoCompania.upper()}#TIENDAS",
         "SK": f"T#{codigoTienda.upper()}"
     }
-    tabla.update_item(
-        Key=key,
-        UpdateExpression="SET shopifyGID.publicaciones = :pubIDs",
-        ExpressionAttributeValues={
-            ":pubIDs": pubIDs
-        }
-    )
+    try:
+        tabla.update_item(
+            Key=key,
+            UpdateExpression="SET shopifyGID.publicaciones = :pubIDs",
+            ExpressionAttributeValues={
+                ":pubIDs": pubIDs
+            }
+        )
+    except ClientError as err:
+        if err.response['Error']['Code'] == 'ValidationException':
+            tabla.update_item(
+                Key=key,
+                UpdateExpression="SET shopifyGID = :pubIDs",
+                ExpressionAttributeValues={
+                    ":pubIDs": {
+                        "publicaciones": pubIDs
+                    }
+                }
+            )
+        else:
+            raise
 
 
 def consultarArticulos(co_art: str, codigoTienda: str):

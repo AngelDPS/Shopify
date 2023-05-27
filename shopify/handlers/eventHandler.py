@@ -76,7 +76,8 @@ class EventHandler:
         """
         cambios = {
             k: v for k, v in NewImage
-            if (v != getattr(OldImage, k) and k != "updated_at")
+            if (v != getattr(OldImage, k) and k != "updated_at"
+                and k != "shopifyGID")
         }
         logger.debug(f'{cambios = }')
         return cambios
