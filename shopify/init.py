@@ -1,8 +1,17 @@
+from shopify.libs.sqs import (
+    process_messages,
+    procesar_articulos_repetidos,
+    delete_message
+)
 from shopify.handlers.eventHandler import EventHandler
 import shopify.libs.my_logging as my_logging
 from typing import Any
 
 logger = my_logging.getLogger("shopify")
+
+
+def obtener_co_art(evento):
+    return evento[0]["dynamodb"]["NewImage"]["co_art"]["S"]
 
 
 def event_handler(event: list[dict], context: Any) -> list[dict[str, str]]:
@@ -23,15 +32,47 @@ def event_handler(event: list[dict], context: Any) -> list[dict[str, str]]:
         retornados por cada evento procesado.
     """
     logger.info("*** INICIO LAMBDA SHOPIFY ***")
+    # raise Exception("PRUEBA")
+    co_art = obtener_co_art(event)
+    eventos_en_cola, ids, co_arts_en_cola, repetidos = process_messages()
+
+    idx = procesar_articulos_repetidos(
+        co_art=co_art,
+        lista_co_art=co_arts_en_cola,
+        eventos=eventos_en_cola,
+        NewImage=event[0]["dynamodb"]["NewImage"]
+    )
+    if idx:
+        logger.warning(
+            f'Se encontraron eventos en cola para para el articulo "{co_art}" '
+            'siendo procesado.'
+        )
+        eventos_en_cola.insert(0, eventos_en_cola.pop(idx))
+        ids.insert(0, ids.pop(idx))
+    else:
+        eventos_en_cola.insert(0, event)
+        ids.insert(0, None)
+
+    logger.info(f"Eventos para procesar: {eventos_en_cola}")
+
     r = []
-    for e in event:
+    for EVs, ID in zip(eventos_en_cola, ids):
+        co_art_actual = obtener_co_art(EVs)
         try:
-            r.append(EventHandler(e).ejecutar())
-            logger.debug(r[-1])
+            for EV in EVs:
+                # r.append('PRUEBA')
+                r.append(EventHandler(EV[0]).ejecutar())
+                logger.debug(r[-1])
         except Exception as err:
-            mensaje = (f"Ocurrió un error manejado el evento:\n{e}."
+            mensaje = (f"Ocurrió un error manejado el evento:\n{EV}."
                        f"Se levantó la excepción '{err}'.")
-            raise Exception(mensaje) from err
+            if co_art_actual == co_art:
+                raise Exception(mensaje) from err
+        else:
+            if ID:
+                delete_message(ID)
+                if co_art_actual in repetidos:
+                    delete_message(repetidos[co_art_actual]["ReceiptHandle"])
 
     logger.info("*** FIN LAMBDA SHOPIFY ***")
     return r
@@ -75,10 +116,13 @@ if __name__ == "__main__":
                         "S": "1005011A1"
                     },
                     "co_lin": {
-                        "S": "10"
+                        "S": "11"
                     },
                     "created_at": {
                         "S": "2023-05-18T11:50:26.134847Z"
+                    },
+                    "des_shopify": {
+                        "S": "<p>Bienvenido a <strong>DELECTRA</strong> tu proveedor seguro! ⚡⚡</p><p>Prueba</p>"
                     },
                     "entity": {
                         "S": "articulos"
@@ -89,16 +133,13 @@ if __name__ == "__main__":
                     "habilitado": {
                         "N": "1"
                     },
-                    "des_shopify": {
-                        "S": "<p>Bienvenido a <strong>DELECTRA</strong> tu proveedor seguro! ⚡⚡</p>"
-                    },
                     "imagen_url": {
                         "L": [
                             {
                                 "S": "articulo_01R43119R01_876.webp"
                             },
                             {
-                                "S": "articulo_020945415AA_425.webp"
+                                "S": "articulo_0197C5_367.webp"
                             }
                         ]
                     },
@@ -138,8 +179,35 @@ if __name__ == "__main__":
                     "referencia": {
                         "S": "CHASVD0200136"
                     },
+                    "shopifyGID": {
+                        "M": {
+                            "imagenes": {
+                                "M": {
+                                    "articulo_0197C5_367.webp": {
+                                        "S": "gid://shopify/MediaImage/33868416090402"
+                                    },
+                                    "articulo_01R43119R01_876.webp": {
+                                        "S": "gid://shopify/MediaImage/33868416057634"
+                                    }
+                                }
+                            },
+                            "producto": {
+                                "S": "gid://shopify/Product/8295594098978"
+                            },
+                            "variante": {
+                                "M": {
+                                    "id": {
+                                        "S": "gid://shopify/ProductVariant/45239299997986"
+                                    },
+                                    "inventario": {
+                                        "S": "gid://shopify/InventoryItem/47287575675170"
+                                    }
+                                }
+                            }
+                        }
+                    },
                     "stock_act": {
-                        "N": "12"
+                        "N": "10"
                     },
                     "stock_com": {
                         "N": "0"
@@ -177,10 +245,13 @@ if __name__ == "__main__":
                         "S": "1005011A1"
                     },
                     "co_lin": {
-                        "S": "10"
+                        "S": "11"
                     },
                     "created_at": {
                         "S": "2023-05-18T11:50:26.134847Z"
+                    },
+                    "des_shopify": {
+                        "S": "<p>Bienvenido a <strong>DELECTRA</strong> tu proveedor seguro! ⚡⚡</p><p>Prueba</p>"
                     },
                     "entity": {
                         "S": "articulos"
@@ -191,16 +262,13 @@ if __name__ == "__main__":
                     "habilitado": {
                         "N": "1"
                     },
-                    "des_shopify": {
-                        "S": "<p>Bienvenido a <strong>DELECTRA</strong> tu proveedor seguro! ⚡⚡</p>"
-                    },
                     "imagen_url": {
                         "L": [
                             {
                                 "S": "articulo_01R43119R01_876.webp"
                             },
                             {
-                                "S": "articulo_020945415AA_425.webp"
+                                "S": "articulo_0197C5_367.webp"
                             }
                         ]
                     },
@@ -240,8 +308,35 @@ if __name__ == "__main__":
                     "referencia": {
                         "S": "CHASVD0200136"
                     },
+                    "shopifyGID": {
+                        "M": {
+                            "imagenes": {
+                                "M": {
+                                    "articulo_0197C5_367.webp": {
+                                        "S": "gid://shopify/MediaImage/33868416090402"
+                                    },
+                                    "articulo_01R43119R01_876.webp": {
+                                        "S": "gid://shopify/MediaImage/33868416057634"
+                                    }
+                                }
+                            },
+                            "producto": {
+                                "S": "gid://shopify/Product/8295594098978"
+                            },
+                            "variante": {
+                                "M": {
+                                    "id": {
+                                        "S": "gid://shopify/ProductVariant/45239299997986"
+                                    },
+                                    "inventario": {
+                                        "S": "gid://shopify/InventoryItem/47287575675170"
+                                    }
+                                }
+                            }
+                        }
+                    },
                     "stock_act": {
-                        "N": "12"
+                        "N": "10"
                     },
                     "stock_com": {
                         "N": "0"
@@ -257,33 +352,6 @@ if __name__ == "__main__":
                     },
                     "updated_at": {
                         "S": "2023-05-18T11:50:26.134847Z"
-                    },
-                    "shopifyGID": {
-                        "M": {
-                            "producto": {
-                                "S": "gid://shopify/Product/8295525220642"
-                            },
-                            "variante": {
-                                "M": {
-                                    "id": {
-                                        "S": "gid://shopify/ProductVariant/45238820110626"
-                                    },
-                                    "inventario": {
-                                        "S": "gid://shopify/InventoryItem/47287093952802"
-                                    }
-                                }
-                            },
-                            "imagenes": {
-                                "M": {
-                                    "articulo_01R43119R01_876.webp": {
-                                        "S": "gid://shopify/MediaImage/33868044239138"
-                                    },
-                                    "articulo_020945415AA_425.webp": {
-                                        "S": "gid://shopify/MediaImage/33868044271906"
-                                    }
-                                }
-                            }
-                        }
                     }
                 },
                 "SequenceNumber": "4911100000000022879305420",
@@ -294,19 +362,10 @@ if __name__ == "__main__":
         }
     ]
 
-    cambio = {"imagen_url": {
-        "L": [
-            {
-                "S": "articulo_01R43119R01_876.webp"
-            },
-            {
-                "S": "articulo_023371101201_146.webp"
-            },
-            {
-                "S": "articulo_0197C5_367.webp"
-            }
-        ]
+    cambio = {"co_lin": {
+        "S": "10"
     }}
-    # event[0]["dynamodb"]["NewImage"] |= cambio
+    cambio["stock_act"] = {"N": "20"}
+    event[0]["dynamodb"]["NewImage"] |= cambio
 
     event_handler(event, None)
