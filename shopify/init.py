@@ -61,11 +61,12 @@ def event_handler(event: list[dict], context: Any) -> list[dict[str, str]]:
         try:
             for EV in EVs:
                 # r.append('PRUEBA')
-                r.append(EventHandler(EV[0]).ejecutar())
+                r.append(EventHandler(EV).ejecutar())
                 logger.debug(r[-1])
         except Exception as err:
             mensaje = (f"Ocurrió un error manejado el evento:\n{EV}."
                        f"Se levantó la excepción '{err}'.")
+            logger.exception(mensaje)
             if co_art_actual == co_art:
                 raise Exception(mensaje) from err
         else:
