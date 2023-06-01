@@ -63,7 +63,7 @@ class McollectionInput(BaseModel):
         alias='nombre',
         description="El nombre de la colección")
     descriptionHtml: str | None = Field(
-        None, title="Descripción en HTML",
+        None, title="Descripción en HTML", alias="des_shopify",
         description="Descripción de la colección en formato HTML.")
     products: list[str] | None = Field(
         None, title="Productos",
