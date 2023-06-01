@@ -49,12 +49,22 @@ class ColeccionHandler:
                              "publicación.")
             raise
 
-    def __init__(self, NewImage: Mlinea, OldImage: Mlinea = None,
-                 cambios: Mlinea = None):
-        self.NewImage = NewImage
-        self.OldImage = OldImage
-        self.cambios = cambios or Mlinea()
-        self.cambios.entity = None
+    def __init__(self, evento):
+        self.eventName = evento.eventName
+        self.NewImage = Mlinea.parse_obj(evento.NewImage)
+        self.OldImage = Mlinea.parse_obj(evento.OldImage)
+        self.cambios = Mlinea.parse_obj(
+            evento.obtenerCambios(self.NewImage, self.OldImage)
+        )
+
+    @classmethod
+    def desde_linea(cls, linea: dict):
+        evento = type("evento", object, {
+            "eventName": "INSERT",
+            "NewImage": linea,
+            "OldImage": linea
+        })
+        return cls.__init__(evento)
 
     def publicar(self):
         """Publica el artículo en la tienda virtual y punto de venta de
@@ -96,11 +106,33 @@ class ColeccionHandler:
 
     def ejecutar(self):
         try:
-            if not self.OldImage:
-                respuestas = self.crear()
-            elif self.cambios:
-                respuestas = self.modificar()
-            return respuestas
+            if self.eventName == "INSERT":
+                respuesta = self.crear()
+            elif self.cambios.dict(exclude_none=True, exclude_unset=True):
+                if self.NewImage.shopifyGID:
+                    respuesta = self.modificar()
+                else:
+                    # TODO: Confirmar que la colección no existe en Shopify
+                    logger.warning("En el evento no se encontró el GID de "
+                                   "Shopify proveniente de la base de datos.\n"
+                                   "Se consultará a Shopify por su "
+                                   "existencia.")
+                    try:
+                        self.NewImage.shopifyGID = (
+                            conexion.obtenerGidColeccion(self.NewImage.nombre)
+                        )
+                        self.actualizarGidBD()
+                        respuesta = self.modificar()
+                    except IndexError:
+                        logger.warning("La colección correspondiente no existe"
+                                       " en Shopify. Se creará una colección "
+                                       "nueva con la data actualizada.")
+                        respuesta = self.crear()
+            else:
+                logger.info("Los cambios encontrados no ameritan "
+                            "actualizaciones en Shopify.")
+                respuesta = ["No se realizaron acciones."]
+            return respuesta
         except Exception:
             logger.exception("Ocurrió un problema ejecutando la acción sobre "
                              "la colección")

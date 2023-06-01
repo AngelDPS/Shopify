@@ -40,25 +40,6 @@ class Marticulo(BaseModel):
     # updated_at: datetime | None = None
 
 
-class McambiosInventario(BaseModel):
-    stock_act: int | None = None
-    stock_com: int | None = None
-
-
-class McambiosVariante(BaseModel):
-    precio: Decimal | None = Field(None, alias='price')
-    codigo_barra: str | None = None
-    referencia: str | None = None
-
-
-class McambiosProducto(BaseModel):
-    art_des: str | None = None
-    co_lin: str | None = None
-    marca: str | None = None
-    habilitado: bool | None = None
-    status: Literal["ACTIVE", "ARCHIVED"] | None = None
-
-
 class Mlinea(BaseModel):
     PK: str | None = None
     SK: str | None = None
@@ -69,6 +50,7 @@ class Mlinea(BaseModel):
     co_lin_padre: str | None = None
     descuento: Decimal | None = None
     shopifyGID: str | None = None
+    des_shopify: str | None = None
     # created_at: datetime | None = None
     # updated_at: datetime | None = None
 

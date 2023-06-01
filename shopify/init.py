@@ -1,17 +1,14 @@
 from shopify.libs.sqs import (
     process_messages,
-    procesar_articulos_repetidos,
+    procesar_entidades_repetidas,
     delete_message
 )
 from shopify.handlers.eventHandler import EventHandler
+from shopify.libs.util import obtener_codigo
 import shopify.libs.my_logging as my_logging
 from typing import Any
 
 logger = my_logging.getLogger("shopify")
-
-
-def obtener_co_art(evento):
-    return evento[0]["dynamodb"]["NewImage"]["co_art"]["S"]
 
 
 def event_handler(event: list[dict], context: Any) -> list[dict[str, str]]:
@@ -33,18 +30,18 @@ def event_handler(event: list[dict], context: Any) -> list[dict[str, str]]:
     """
     logger.info("*** INICIO LAMBDA SHOPIFY ***")
     # raise Exception("PRUEBA")
-    co_art = obtener_co_art(event)
-    eventos_en_cola, ids, co_arts_en_cola, repetidos = process_messages()
+    codigo = obtener_codigo(event)
+    eventos_en_cola, ids, codigos_en_cola, repetidos = process_messages()
 
-    idx = procesar_articulos_repetidos(
-        co_art=co_art,
-        lista_co_art=co_arts_en_cola,
+    idx = procesar_entidades_repetidas(
+        codigo=codigo,
+        lista_codigos=codigos_en_cola,
         eventos=eventos_en_cola,
         NewImage=event[0]["dynamodb"]["NewImage"]
     )
     if idx:
         logger.warning(
-            f'Se encontraron eventos en cola para para el articulo "{co_art}" '
+            f'Se encontraron eventos en cola para para "{codigo}" '
             'siendo procesado.'
         )
         eventos_en_cola.insert(0, eventos_en_cola.pop(idx))
@@ -57,7 +54,7 @@ def event_handler(event: list[dict], context: Any) -> list[dict[str, str]]:
 
     r = []
     for EVs, ID in zip(eventos_en_cola, ids):
-        co_art_actual = obtener_co_art(EVs)
+        codigo_actual = obtener_codigo(EVs)
         try:
             for EV in EVs:
                 # r.append('PRUEBA')
@@ -67,13 +64,13 @@ def event_handler(event: list[dict], context: Any) -> list[dict[str, str]]:
             mensaje = (f"Ocurrió un error manejado el evento:\n{EV}."
                        f"Se levantó la excepción '{err}'.")
             logger.exception(mensaje)
-            if co_art_actual == co_art:
+            if codigo_actual == codigo:
                 raise Exception(mensaje) from err
         else:
             if ID:
                 delete_message(ID)
-                if co_art_actual in repetidos:
-                    delete_message(repetidos[co_art_actual]["ReceiptHandle"])
+                if codigo_actual in repetidos:
+                    delete_message(repetidos[codigo_actual]["ReceiptHandle"])
 
     logger.info("*** FIN LAMBDA SHOPIFY ***")
     return r
