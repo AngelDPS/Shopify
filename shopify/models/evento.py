@@ -1,5 +1,4 @@
 from pydantic import Field, BaseModel as PydanticBaseModel
-from typing import Literal
 from decimal import Decimal
 from enum import Enum
 # from datetime import datetime
@@ -17,7 +16,6 @@ class Habilitado(Enum):
 
 
 class Marticulo(BaseModel):
-    entity: Literal["articulos"] = "articulos"
     art_des: str | None = None
     codigoCompania: str | None = None
     codigoTienda: str | None = None
@@ -43,7 +41,6 @@ class Marticulo(BaseModel):
 class Mlinea(BaseModel):
     PK: str | None = None
     SK: str | None = None
-    entity: Literal["lineas"] = "lineas"
     nombre: str | None = Field(None, alias='title')
     codigoCompania: str | None = None
     co_lin: str | None = None
@@ -56,7 +53,6 @@ class Mlinea(BaseModel):
 
 
 class Mtienda(BaseModel):
-    entity: Literal["tiendas"] = "tiendas"
     nombre: str | None = Field(None, alias='name')
     direccion: str | None = None
     telefono: str | None = Field(None, alias='phone')

@@ -1,5 +1,6 @@
 import logging
 from shopify.models.evento import Mlinea
+from shopify.models.coleccion import McollectionInput
 from re import search
 import shopify.libs.dynamodb as dynamodb
 import shopify.conexion as conexion
@@ -59,12 +60,13 @@ class ColeccionHandler:
 
     @classmethod
     def desde_linea(cls, linea: dict):
-        evento = type("evento", object, {
+        evento = type("evento", (), {
             "eventName": "INSERT",
             "NewImage": linea,
-            "OldImage": linea
+            "OldImage": linea,
+            "obtenerCambios": (lambda x, y: {})
         })
-        return cls.__init__(evento)
+        return cls(evento)
 
     def publicar(self):
         """Publica el artículo en la tienda virtual y punto de venta de
@@ -86,7 +88,10 @@ class ColeccionHandler:
         logger.info("Creando colección a partir de línea.")
 
         try:
-            self.NewImage.shopifyGID = conexion.crearColeccion(self.NewImage)
+            collectionInput = McollectionInput.parse_obj(
+                self.NewImage.dict(by_alias=True, exclude_none=True)
+            )
+            self.NewImage.shopifyGID = conexion.crearColeccion(collectionInput)
             self.publicar()
             self.actualizarGidBD()
             logger.info("Colección creada exitosamente.")
@@ -97,7 +102,12 @@ class ColeccionHandler:
 
     def modificar(self) -> list[dict]:
         try:
-            conexion.modificarColeccion(self.cambios)
+            collectionInput = McollectionInput.parse_obj(
+                self.cambios.dict(by_alias=True, exclude_none=True,
+                                  exclude_unset=True)
+            )
+            collectionInput.id = self.NewImage.shopifyGID
+            conexion.modificarColeccion(collectionInput)
             logger.info("La colección fue modificada exitosamente.")
             return "Coleccion modificada exitosamente."
         except Exception:
