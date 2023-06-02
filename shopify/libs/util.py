@@ -1,0 +1,10 @@
+def obtener_codigo(evento):
+    match evento[0]["dynamodb"]["NewImage"]["entity"]["S"]:
+        case "articulos":
+            return evento[0]["dynamodb"]["NewImage"]["co_art"]["S"]
+        case "lineas":
+            return evento[0]["dynamodb"]["NewImage"]["co_lin"]["S"]
+        case "tiendas":
+            return evento[0]["dynamodb"]["NewImage"]["codigoTienda"]["S"]
+        case _:
+            return None

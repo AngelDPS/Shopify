@@ -5,10 +5,7 @@ from shopify.models.producto import (
     MinventoryLevelInput
 )
 from shopify.models.misc import McreateMediaInput
-from shopify.models.evento import (
-    Marticulo,
-    Mlinea
-)
+from shopify.models.evento import Marticulo
 from shopify.handlers.coleccionHandler import ColeccionHandler
 from os import environ
 import shopify.libs.dynamodb as dynamodb
@@ -126,10 +123,9 @@ class ProductoHandler:
             logger.warning("No se encontró el GID de la linea en la base "
                            "de datos. Se procederá a consultar el GID a "
                            "Shopify y a guardar el resultado obtenido.")
-            linea = Mlinea.parse_obj(linea)
-            coleccion = ColeccionHandler(linea)
+            coleccion = ColeccionHandler.desde_linea(linea)
             coleccion.NewImage.shopifyGID = (
-                conexion.obtenerGidColeccion(linea.nombre)
+                conexion.obtenerGidColeccion(linea['nombre'])
             )
             coleccion.actualizarGidBD()
             return coleccion.NewImage.shopifyGID

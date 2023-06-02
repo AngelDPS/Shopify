@@ -1,5 +1,6 @@
 from boto3.dynamodb.types import TypeDeserializer
 from shopify.handlers.productoHandler import ProductoHandler
+from shopify.handlers.coleccionHandler import ColeccionHandler
 from logging import getLogger
 
 logger = getLogger("shopify.eventHandler")
@@ -90,6 +91,7 @@ class EventHandler:
         """
         self.eventName = evento['eventName']
         self.NewImage, self.OldImage = EventHandler.formatearEvento(evento)
+        self.handler = self.obtenerHandler()
 
     def obtenerHandler(self) -> ProductoHandler:
         """Obtiene un manipulador según el tipo de registro que accionó el
@@ -99,9 +101,22 @@ class EventHandler:
             ProductoHandler: El manipulador adecuado para el evento del
             registro.
         """
-        # TODO: Expandir la selección de clase.
-        logger.info("Se idenficó el evento como proveniente de un artículo.")
-        return {'articulos': ProductoHandler}[self.NewImage['entity']]
+        try:
+            handler = {
+                'articulos': ProductoHandler,
+                'lineas': ColeccionHandler
+                # 'tiendas': SucursalHandler
+            }
+            handler = handler[self.NewImage['entity']]
+            logger.info("El evento corresponde a una entidad de "
+                        f"{self.NewImage['entity']}.")
+            return handler(self)
+        except KeyError as err:
+            msg = ("El evento corresponde a una entidad de "
+                   f"{self.NewImage['entity']}, cuyo proceso no está "
+                   "implementado.")
+            logger.exception(msg)
+            raise NotImplementedError(msg) from err
 
     def ejecutar(self) -> dict[str, str]:
         """Método encargado de ejecutar la acción solicitada por el evento ya
@@ -112,8 +127,7 @@ class EventHandler:
             acción y el resultado obtenido.
         """
         try:
-            handler = self.obtenerHandler()
-            r = handler(self).ejecutar()
+            r = self.handler.ejecutar()
             return {"status": "OK", "respuesta": r}
         except Exception:
             logger.exception("Ocurrió un error ejecutando el evento.")

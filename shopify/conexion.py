@@ -8,7 +8,6 @@ from gql.transport.exceptions import (
 from shopify.models.producto import MproductInput, MproductVariantInput
 from shopify.models.coleccion import McollectionInput
 from shopify.models.misc import McreateMediaInput
-from shopify.models.evento import Mlinea
 import os
 
 logger = logging.getLogger(__name__)
@@ -281,7 +280,8 @@ def modificarVarianteProducto(variantInput: MproductVariantInput):
                 }
             }
             """,
-            variables={'input': variantInput.dict(exclude_none=True)}
+            variables={'input': variantInput.dict(exclude_none=True,
+                                                  exclude_unset=True)}
         )
         logger.info("Variante modificado exitosamente.")
     except Exception:
@@ -302,7 +302,8 @@ def modificarProducto(productInput: MproductInput):
                 }
             }
             """,
-            variables={'input': productInput.dict(exclude_none=True)}
+            variables={'input': productInput.dict(exclude_none=True,
+                                                  exclude_unset=True)}
         )
         logger.info("Producto modificado exitosamente.")
     except Exception:
@@ -390,7 +391,7 @@ def obtenerGidColeccion(nombre: str) -> str:
         raise
 
 
-def crearColeccion(linea: Mlinea) -> str:
+def crearColeccion(collectionInput: McollectionInput) -> str:
     try:
         return execute(
             """
@@ -406,9 +407,7 @@ def crearColeccion(linea: Mlinea) -> str:
             }
             """,
             variables={
-                'input': McollectionInput.parse_obj(linea).dict(
-                    exclude_none=True
-                )
+                'input': collectionInput.dict(exclude_none=True)
             }
         )["collectionCreate"]["collection"]["id"]
     except Exception:
@@ -416,10 +415,7 @@ def crearColeccion(linea: Mlinea) -> str:
         raise
 
 
-def modificarColeccion(linea: Mlinea):
-    collectionInput = McollectionInput.parse_obj(
-        linea.dict(by_alias=True, exclude_none=True)
-    )
+def modificarColeccion(collectionInput: McollectionInput):
     execute(
         """
         mutation modificarColeccion($input: CollectionInput!) {
@@ -430,7 +426,8 @@ def modificarColeccion(linea: Mlinea):
             }
         }
         """,
-        variables={'input': collectionInput.dict(exclude_none=True)},
+        variables={'input': collectionInput.dict(exclude_none=True,
+                                                 exclude_unset=True)},
     )
 
 

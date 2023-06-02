@@ -1,19 +1,17 @@
 from shopify.libs.sqs import (
     process_messages,
-    procesar_articulos_repetidos,
+    procesar_entidades_repetidas,
     delete_message
 )
 from shopify.handlers.eventHandler import EventHandler
-import shopify.libs.my_logging as my_logging
+from shopify.libs.util import obtener_codigo
+from aws_lambda_powertools import Logger
 from typing import Any
 
-logger = my_logging.getLogger("shopify")
+logger = Logger()
 
 
-def obtener_co_art(evento):
-    return evento[0]["dynamodb"]["NewImage"]["co_art"]["S"]
-
-
+@logger.inject_lambda_context(log_event=True)
 def event_handler(event: list[dict], context: Any) -> list[dict[str, str]]:
     """Manipulador de los eventos de entrada provenientes de
     una base de datos DynamoDB con el registro de inventario para
@@ -33,18 +31,18 @@ def event_handler(event: list[dict], context: Any) -> list[dict[str, str]]:
     """
     logger.info("*** INICIO LAMBDA SHOPIFY ***")
     # raise Exception("PRUEBA")
-    co_art = obtener_co_art(event)
-    eventos_en_cola, ids, co_arts_en_cola, repetidos = process_messages()
+    codigo = obtener_codigo(event)
+    eventos_en_cola, ids, codigos_en_cola, repetidos = process_messages()
 
-    idx = procesar_articulos_repetidos(
-        co_art=co_art,
-        lista_co_art=co_arts_en_cola,
+    idx = procesar_entidades_repetidas(
+        codigo=codigo,
+        lista_codigos=codigos_en_cola,
         eventos=eventos_en_cola,
         NewImage=event[0]["dynamodb"]["NewImage"]
     )
     if idx:
         logger.warning(
-            f'Se encontraron eventos en cola para para el articulo "{co_art}" '
+            f'Se encontraron eventos en cola para para "{codigo}" '
             'siendo procesado.'
         )
         eventos_en_cola.insert(0, eventos_en_cola.pop(idx))
@@ -57,7 +55,7 @@ def event_handler(event: list[dict], context: Any) -> list[dict[str, str]]:
 
     r = []
     for EVs, ID in zip(eventos_en_cola, ids):
-        co_art_actual = obtener_co_art(EVs)
+        codigo_actual = obtener_codigo(EVs)
         try:
             for EV in EVs:
                 # r.append('PRUEBA')
@@ -67,13 +65,13 @@ def event_handler(event: list[dict], context: Any) -> list[dict[str, str]]:
             mensaje = (f"Ocurrió un error manejado el evento:\n{EV}."
                        f"Se levantó la excepción '{err}'.")
             logger.exception(mensaje)
-            if co_art_actual == co_art:
+            if codigo_actual == codigo:
                 raise Exception(mensaje) from err
         else:
             if ID:
                 delete_message(ID)
-                if co_art_actual in repetidos:
-                    delete_message(repetidos[co_art_actual]["ReceiptHandle"])
+                if codigo_actual in repetidos:
+                    delete_message(repetidos[codigo_actual]["ReceiptHandle"])
 
     logger.info("*** FIN LAMBDA SHOPIFY ***")
     return r
@@ -82,13 +80,13 @@ def event_handler(event: list[dict], context: Any) -> list[dict[str, str]]:
 if __name__ == "__main__":
     event = [
         {
-            "eventID": "a47d122d7bfc042520063c173ce48fff",
+            "eventID": "ee993a53bd063ef72948caba3d7cfb33",
             "eventName": "MODIFY",
             "eventVersion": "1.1",
             "eventSource": "aws:dynamodb",
             "awsRegion": "us-east-2",
             "dynamodb": {
-                "ApproximateCreationDateTime": 1683389013,
+                "ApproximateCreationDateTime": 1685735093,
                 "Keys": {
                     "SK": {
                         "S": "METADATA"
@@ -98,23 +96,23 @@ if __name__ == "__main__":
                     }
                 },
                 "NewImage": {
-                    "PK": {
-                        "S": "GENERICO2022#DLTVA#1005011A1"
+                    "prec_vta1": {
+                        "N": "63"
                     },
-                    "SK": {
-                        "S": "METADATA"
+                    "prec_vta3": {
+                        "N": "93"
                     },
-                    "art_des": {
-                        "S": "VOLANTE MOTOR CHANA-SAIC"
+                    "stock_com": {
+                        "N": "0"
                     },
-                    "codigoCompania": {
-                        "S": "GENERICO2022"
+                    "tipo": {
+                        "S": "TIENDA"
                     },
-                    "codigoTienda": {
-                        "S": "DLTVA"
+                    "ubicacion": {
+                        "S": "C3G11"
                     },
-                    "co_art": {
-                        "S": "1005011A1"
+                    "prec_vta2": {
+                        "N": "80"
                     },
                     "co_lin": {
                         "S": "11"
@@ -125,14 +123,47 @@ if __name__ == "__main__":
                     "des_shopify": {
                         "S": "<p>Bienvenido a <strong>DELECTRA</strong> tu proveedor seguro! ⚡⚡</p><p>Prueba</p>"
                     },
-                    "entity": {
-                        "S": "articulos"
+                    "codigoTienda": {
+                        "S": "DLTVA"
                     },
-                    "fx_costos": {
-                        "S": "d208b81bcae86d4354120132c9380157"
+                    "marca": {
+                        "S": "CHANA"
+                    },
+                    "updated_at": {
+                        "S": "2023-05-18T11:50:26.134847Z"
+                    },
+                    "iva": {
+                        "N": "16"
+                    },
+                    "codigoCompania": {
+                        "S": "GENERICO2022"
+                    },
+                    "SK": {
+                        "S": "METADATA"
+                    },
+                    "moneda": {
+                        "N": "2"
                     },
                     "habilitado": {
                         "N": "1"
+                    },
+                    "prec_vta5": {
+                        "N": "0"
+                    },
+                    "prec_vta4": {
+                        "N": "105"
+                    },
+                    "info": {
+                        "NULL": True
+                    },
+                    "prec_vta6": {
+                        "N": "0"
+                    },
+                    "art_des": {
+                        "S": "VOLANTE MOTOR CHANA-SAIC"
+                    },
+                    "co_art": {
+                        "S": "1005011A1"
                     },
                     "imagen_url": {
                         "L": [
@@ -144,109 +175,49 @@ if __name__ == "__main__":
                             }
                         ]
                     },
-                    "info": {
-                        "NULL": True
-                    },
-                    "iva": {
-                        "N": "16"
-                    },
-                    "marca": {
-                        "S": "CHANA"
-                    },
                     "modelo": {
                         "S": "CHANA SV/DC"
-                    },
-                    "moneda": {
-                        "N": "2"
-                    },
-                    "prec_vta1": {
-                        "N": "63"
-                    },
-                    "prec_vta2": {
-                        "N": "70"
-                    },
-                    "prec_vta3": {
-                        "N": "83"
-                    },
-                    "prec_vta4": {
-                        "N": "95"
-                    },
-                    "prec_vta5": {
-                        "N": "0"
-                    },
-                    "prec_vta6": {
-                        "N": "0"
-                    },
-                    "referencia": {
-                        "S": "CHASVD0200136"
-                    },
-                    "shopifyGID": {
-                        "M": {
-                            "imagenes": {
-                                "M": {
-                                    "articulo_0197C5_367.webp": {
-                                        "S": "gid://shopify/MediaImage/33868416090402"
-                                    },
-                                    "articulo_01R43119R01_876.webp": {
-                                        "S": "gid://shopify/MediaImage/33868416057634"
-                                    }
-                                }
-                            },
-                            "producto": {
-                                "S": "gid://shopify/Product/8295594098978"
-                            },
-                            "variante": {
-                                "M": {
-                                    "id": {
-                                        "S": "gid://shopify/ProductVariant/45239299997986"
-                                    },
-                                    "inventario": {
-                                        "S": "gid://shopify/InventoryItem/47287575675170"
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "stock_act": {
-                        "N": "10"
-                    },
-                    "stock_com": {
-                        "N": "0"
-                    },
-                    "tipo": {
-                        "S": "TIENDA"
-                    },
-                    "ubicacion": {
-                        "S": "C3G11"
                     },
                     "unidad": {
                         "S": "PZA"
                     },
-                    "updated_at": {
-                        "S": "2023-05-18T11:50:26.134847Z"
+                    "stock_act": {
+                        "N": "20"
+                    },
+                    "PK": {
+                        "S": "GENERICO2022#DLTVA#1005011A1"
+                    },
+                    "fx_costos": {
+                        "S": "d208b81bcae86d4354120132c9380157"
+                    },
+                    "entity": {
+                        "S": "articulos"
+                    },
+                    "referencia": {
+                        "S": "CHASVD0200136"
                     }
                 },
                 "OldImage": {
-                    "PK": {
-                        "S": "GENERICO2022#DLTVA#1005011A1"
+                    "prec_vta1": {
+                        "N": "63"
                     },
-                    "SK": {
-                        "S": "METADATA"
+                    "prec_vta3": {
+                        "N": "93"
                     },
-                    "art_des": {
-                        "S": "VOLANTE MOTOR CHANA-SAIC"
+                    "stock_com": {
+                        "N": "0"
                     },
-                    "codigoCompania": {
-                        "S": "GENERICO2022"
+                    "tipo": {
+                        "S": "TIENDA"
                     },
-                    "codigoTienda": {
-                        "S": "DLTVA"
+                    "ubicacion": {
+                        "S": "C3G11"
                     },
-                    "co_art": {
-                        "S": "1005011A1"
+                    "prec_vta2": {
+                        "N": "80"
                     },
                     "co_lin": {
-                        "S": "11"
+                        "S": "10"
                     },
                     "created_at": {
                         "S": "2023-05-18T11:50:26.134847Z"
@@ -254,14 +225,47 @@ if __name__ == "__main__":
                     "des_shopify": {
                         "S": "<p>Bienvenido a <strong>DELECTRA</strong> tu proveedor seguro! ⚡⚡</p><p>Prueba</p>"
                     },
-                    "entity": {
-                        "S": "articulos"
+                    "codigoTienda": {
+                        "S": "DLTVA"
                     },
-                    "fx_costos": {
-                        "S": "d208b81bcae86d4354120132c9380157"
+                    "marca": {
+                        "S": "CHANA"
+                    },
+                    "updated_at": {
+                        "S": "2023-05-18T11:50:26.134847Z"
+                    },
+                    "iva": {
+                        "N": "16"
+                    },
+                    "codigoCompania": {
+                        "S": "GENERICO2022"
+                    },
+                    "SK": {
+                        "S": "METADATA"
+                    },
+                    "moneda": {
+                        "N": "2"
                     },
                     "habilitado": {
                         "N": "1"
+                    },
+                    "prec_vta5": {
+                        "N": "0"
+                    },
+                    "prec_vta4": {
+                        "N": "105"
+                    },
+                    "info": {
+                        "NULL": True
+                    },
+                    "prec_vta6": {
+                        "N": "0"
+                    },
+                    "art_des": {
+                        "S": "VOLANTE MOTOR CHANA-SAIC"
+                    },
+                    "co_art": {
+                        "S": "1005011A1"
                     },
                     "imagen_url": {
                         "L": [
@@ -273,90 +277,30 @@ if __name__ == "__main__":
                             }
                         ]
                     },
-                    "info": {
-                        "NULL": True
-                    },
-                    "iva": {
-                        "N": "16"
-                    },
-                    "marca": {
-                        "S": "CHANA"
-                    },
                     "modelo": {
                         "S": "CHANA SV/DC"
-                    },
-                    "moneda": {
-                        "N": "2"
-                    },
-                    "prec_vta1": {
-                        "N": "63"
-                    },
-                    "prec_vta2": {
-                        "N": "70"
-                    },
-                    "prec_vta3": {
-                        "N": "83"
-                    },
-                    "prec_vta4": {
-                        "N": "95"
-                    },
-                    "prec_vta5": {
-                        "N": "0"
-                    },
-                    "prec_vta6": {
-                        "N": "0"
-                    },
-                    "referencia": {
-                        "S": "CHASVD0200136"
-                    },
-                    "shopifyGID": {
-                        "M": {
-                            "imagenes": {
-                                "M": {
-                                    "articulo_0197C5_367.webp": {
-                                        "S": "gid://shopify/MediaImage/33868416090402"
-                                    },
-                                    "articulo_01R43119R01_876.webp": {
-                                        "S": "gid://shopify/MediaImage/33868416057634"
-                                    }
-                                }
-                            },
-                            "producto": {
-                                "S": "gid://shopify/Product/8295594098978"
-                            },
-                            "variante": {
-                                "M": {
-                                    "id": {
-                                        "S": "gid://shopify/ProductVariant/45239299997986"
-                                    },
-                                    "inventario": {
-                                        "S": "gid://shopify/InventoryItem/47287575675170"
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "stock_act": {
-                        "N": "10"
-                    },
-                    "stock_com": {
-                        "N": "0"
-                    },
-                    "tipo": {
-                        "S": "TIENDA"
-                    },
-                    "ubicacion": {
-                        "S": "C3G11"
                     },
                     "unidad": {
                         "S": "PZA"
                     },
-                    "updated_at": {
-                        "S": "2023-05-18T11:50:26.134847Z"
+                    "stock_act": {
+                        "N": "20"
+                    },
+                    "PK": {
+                        "S": "GENERICO2022#DLTVA#1005011A1"
+                    },
+                    "fx_costos": {
+                        "S": "d208b81bcae86d4354120132c9380157"
+                    },
+                    "entity": {
+                        "S": "articulos"
+                    },
+                    "referencia": {
+                        "S": "CHASVD0200136"
                     }
                 },
-                "SequenceNumber": "4911100000000022879305420",
-                "SizeBytes": 881,
+                "SequenceNumber": "134413900000000002860505418",
+                "SizeBytes": 1302,
                 "StreamViewType": "NEW_AND_OLD_IMAGES"
             },
             "eventSourceARN": "arn:aws:dynamodb:us-east-2:099375320271:table/angel-db/stream/2023-05-05T14:09:53.915"
@@ -367,6 +311,6 @@ if __name__ == "__main__":
         "S": "10"
     }}
     cambio["stock_act"] = {"N": "20"}
-    event[0]["dynamodb"]["NewImage"] |= cambio
+    # event[0]["dynamodb"]["NewImage"] |= cambio
 
     event_handler(event, None)
