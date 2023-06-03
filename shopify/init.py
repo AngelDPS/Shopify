@@ -1,3 +1,10 @@
+from aws_lambda_powertools.utilities import parameters
+from os import environ
+# Obtiene las variables de entorno
+environ |= parameters.get_parameter(
+    "/TestingFucntion/shopify", transform="json", max_age=300
+)
+
 from shopify.libs.sqs import (
     process_messages,
     procesar_entidades_repetidas,
@@ -8,7 +15,7 @@ from shopify.libs.util import obtener_codigo
 from aws_lambda_powertools import Logger
 from typing import Any
 
-logger = Logger()
+logger = Logger(service="shopify")
 
 
 @logger.inject_lambda_context(log_event=True)
@@ -40,7 +47,7 @@ def event_handler(event: list[dict], context: Any) -> list[dict[str, str]]:
         eventos=eventos_en_cola,
         NewImage=event[0]["dynamodb"]["NewImage"]
     )
-    if idx:
+    if idx is not None:
         logger.warning(
             f'Se encontraron eventos en cola para para "{codigo}" '
             'siendo procesado.'

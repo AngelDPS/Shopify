@@ -49,7 +49,7 @@ def process_messages():
     for n, mensaje in enumerate(receive_messages().get("Messages", [])):
         id_recepcion = mensaje['ReceiptHandle']
         evento = json.loads(mensaje["Body"])
-        logger.debug(f"Evento {n} = {evento}")
+        logger.debug(f"Evento {n+1} = {evento}")
         codigo = obtener_codigo(evento)
 
         if not codigo:
@@ -79,12 +79,3 @@ def process_messages():
 
     logger.debug(f'Eventos procesados de la cola = {eventos}')
     return eventos, ids, codigos_vistos, codigos_repetidos
-
-
-def event_handler(event, context):
-    print("Inicio prueba")
-    # raise Exception("PRUEBA")
-    a, b = process_messages()
-    print(f'eventos = {a}, co_arts = {b}')
-
-    print("Finalizo correctamente!!!!!")

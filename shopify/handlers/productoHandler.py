@@ -16,7 +16,6 @@ logger = getLogger("shopify.productoHandler")
 
 class ProductoHandler:
 
-    # TODO: Función para actualizar BD
     def actualizarGidBD(self):
         """Actualiza el GID de Shopify para el producto usando la información
         guardada en la instancia.
@@ -38,7 +37,7 @@ class ProductoHandler:
         try:
             # TODO: Aquí se obtiene el parámetro de configuración para el
             # campo del precio.
-            return environ['precio']
+            return environ['PRECIO']
         except KeyError:
             logger.exception("No se encontró la variable de ambiente 'precio' "
                              "con el campo de precio que deben usar los "
@@ -187,10 +186,7 @@ class ProductoHandler:
             raise
 
     class imagenUrl(str):
-        # TODO: Aquí se define el url para las imágenes.
-        base_url = (
-            'https://angelbucket-test.s3.us-east-2.amazonaws.com/imagenes/'
-        )
+        base_url = environ["IMAGES_PATH"]
 
         def __new__(self, fname: str):
             instance = super().__new__(self, self.base_url + fname)
@@ -251,8 +247,6 @@ class ProductoHandler:
         for label in ['NewImage', 'OldImage']:
             setattr(self, label,
                     Marticulo.parse_obj(getattr(evento, label)))
-            # TODO: Aquí se usa el parámetro de configuración para el campo de
-            # precio.
             getattr(self, label).precio = getattr(evento, label)[campo_precio]
             getattr(self, label).habilitado = (
                 getattr(self, label).habilitado.name
@@ -316,9 +310,9 @@ class ProductoHandler:
         """
         try:
             delta_act = (self.cambios.stock_act - self.OldImage.stock_act
-                         if self.cambios.stock_act else 0)
+                         if self.cambios.stock_act is not None else 0)
             delta_com = (self.cambios.stock_com - self.OldImage.stock_com
-                         if self.cambios.stock_com else 0)
+                         if self.cambios.stock_com is not None else 0)
             delta = delta_act - delta_com
             if delta != 0:
                 conexion.modificarInventario(
@@ -374,7 +368,7 @@ class ProductoHandler:
                 self.cambios.dict(by_alias=True, exclude_none=True,
                                   exclude_unset=True)
             )
-            if self.cambios.co_lin:
+            if self.cambios.co_lin is not None:
                 productInput.collectionsToJoin = [self.obtenerGidColeccion()]
                 productInput.collectionsToLeave = [
                     self.obtenerGidColeccion(from_old=True)

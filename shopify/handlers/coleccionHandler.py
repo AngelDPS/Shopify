@@ -122,7 +122,6 @@ class ColeccionHandler:
                 if self.NewImage.shopifyGID:
                     respuesta = self.modificar()
                 else:
-                    # TODO: Confirmar que la colección no existe en Shopify
                     logger.warning("En el evento no se encontró el GID de "
                                    "Shopify proveniente de la base de datos.\n"
                                    "Se consultará a Shopify por su "
