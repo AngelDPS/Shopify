@@ -7,11 +7,15 @@ from shopify.models.producto import (
 from shopify.models.misc import McreateMediaInput
 from shopify.models.evento import Marticulo
 from shopify.handlers.coleccionHandler import ColeccionHandler
-from os import environ
 import shopify.libs.dynamodb as dynamodb
 import shopify.conexion as conexion
+from os import environ
+import boto3
 
 logger = getLogger("shopify.productoHandler")
+s3_client = boto3.client('s3',
+                         region_name=environ.get("AWS_REGION"),
+                         config=boto3.session.Config(signature_version='s3v4',))
 
 
 class ProductoHandler:
@@ -186,10 +190,15 @@ class ProductoHandler:
             raise
 
     class imagenUrl(str):
-        base_url = environ["IMAGES_PATH"]
 
-        def __new__(self, fname: str):
-            instance = super().__new__(self, self.base_url + fname)
+        def __new__(cls, fname: str):
+            psigned = s3_client.generate_presigned_url(
+                'get_object',
+                Params={'Bucket': environ.get("BUCKET_NAME"),
+                        'Key': f"imagenes/{fname}"},
+                ExpiresIn=3600
+            )
+            instance = super().__new__(cls, psigned)
             return instance
 
         def __init__(self, fname: str):
