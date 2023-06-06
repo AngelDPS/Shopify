@@ -13,9 +13,29 @@ from os import environ
 import boto3
 
 logger = getLogger("shopify.productoHandler")
-s3_client = boto3.client('s3',
-                         region_name=environ.get("AWS_REGION"),
-                         config=boto3.session.Config(signature_version='s3v4',))
+s3_client = boto3.client('s3', region_name=environ.get("AWS_REGION"),
+                         config=boto3.session.Config(signature_version='s3v4'))
+
+
+class imagenUrl(str):
+
+    def __new__(cls, fname: str):
+        psigned = s3_client.generate_presigned_url(
+            'get_object',
+            Params={'Bucket': environ.get("BUCKET_NAME"),
+                    'Key': f"imagenes/{fname}"},
+            ExpiresIn=3600
+        )
+        instance = super().__new__(cls, psigned)
+        return instance
+
+    def __init__(self, fname: str):
+        self.fname = fname
+        super().__init__()
+
+
+def obtenerUrls(file_names: list[str]) -> tuple[list[imagenUrl]]:
+    return [imagenUrl(fname) for fname in file_names]
 
 
 class ProductoHandler:
@@ -189,54 +209,7 @@ class ProductoHandler:
                              "publicación.")
             raise
 
-    class imagenUrl(str):
-
-        def __new__(cls, fname: str):
-            psigned = s3_client.generate_presigned_url(
-                'get_object',
-                Params={'Bucket': environ.get("BUCKET_NAME"),
-                        'Key': f"imagenes/{fname}"},
-                ExpiresIn=3600
-            )
-            instance = super().__new__(cls, psigned)
-            return instance
-
-        def __init__(self, fname: str):
-            self.fname = fname
-            super().__init__()
-
-    def obtenerUrls(self) -> tuple[list[imagenUrl]]:
-        self.NewImage.imagen_url = ([self.imagenUrl(fname) for fname
-                                     in self.NewImage.imagen_url]
-                                    if self.NewImage.imagen_url else [])
-
-        self.OldImage.imagen_url = ([self.imagenUrl(fname) for fname
-                                     in self.OldImage.imagen_url]
-                                    if self.OldImage.imagen_url else [])
-        return self.NewImage.imagen_url, self.OldImage.imagen_url
-
-    def obtenerGidImagenes(self, from_old: bool = False):
-        urls = (self.NewImage.imagen_url if not from_old
-                else self.OldImage.imagen_url)
-        if urls:
-            gids = {}
-            for url in urls:
-                try:
-                    gids[url.fname] = conexion.obtenerGidImagen(url.fname)
-                    logger.info(f"Se consiguió el archivo '{url.fname}' ya "
-                                "cargado en Shopify.")
-                    continue
-                except IndexError:
-                    pass
-                try:
-                    gids[url.fname] = conexion.cargarImagen(url)
-                    logger.info(f"Se cargó el archivo '{url.fname}' "
-                                "a Shopify.")
-                except Exception:
-                    logger.error(f"Hubo problemas con el archivo '{url.fname}'"
-                                 " y se saltará.")
-                    gids[url.fname] = "gid://shopify/MediaImage/0"
-            return gids
+    obtenerUrls = staticmethod(obtenerUrls)
 
     def __init__(self, evento):
         """Constructor de la clase
@@ -263,7 +236,6 @@ class ProductoHandler:
         self.cambios = Marticulo.parse_obj(
             evento.obtenerCambios(self.NewImage, self.OldImage)
         )
-        self.obtenerUrls()
 
     def publicar(self):
         """Publica el artículo en la tienda virtual y punto de venta de
@@ -300,7 +272,7 @@ class ProductoHandler:
             )
             mediaInput = [McreateMediaInput(mediaContentType="IMAGE",
                                             originalSource=url)
-                          for url in self.NewImage.imagen_url]
+                          for url in obtenerUrls(self.NewImage.imagen_url)]
             self.NewImage.shopifyGID = conexion.crearProducto(productInput,
                                                               mediaInput)
             self.publicar()
@@ -407,7 +379,7 @@ class ProductoHandler:
             if urls_anexados:
                 anexarMediaInput = [McreateMediaInput(mediaContentType="IMAGE",
                                                       originalSource=url)
-                                    for url in urls_anexados]
+                                    for url in self.obtenerUrls(urls_anexados)]
                 self.NewImage.shopifyGID['imagenes'] |= (
                     conexion.anexarImagenArticulo(
                         self.OldImage.shopifyGID["producto"], anexarMediaInput
@@ -416,8 +388,8 @@ class ProductoHandler:
                 msg += "Imágenes añadidas."
             if urls_removidos:
                 eliminarMediaIds = [
-                    self.NewImage.shopifyGID["imagenes"].pop(url.fname)
-                    for url in urls_removidos]
+                    self.NewImage.shopifyGID["imagenes"].pop(fname)
+                    for fname in urls_removidos]
                 conexion.eliminarImagenArticulo(
                     self.NewImage.shopifyGID["producto"],
                     eliminarMediaIds
