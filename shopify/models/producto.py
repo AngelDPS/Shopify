@@ -20,7 +20,7 @@ class BaseModel(PydanticBaseModel):
 
 
 class MinventoryLevelInput(BaseModel):
-    availableQuantity: NonNegativeInt = Field(
+    availableQuantity: int = Field(
         ...,
         alias='stock_act'
     )
