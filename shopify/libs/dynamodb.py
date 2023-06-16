@@ -4,8 +4,6 @@ from botocore.exceptions import ClientError
 from os import environ
 
 dynamodb = boto3.resource("dynamodb")
-# TODO: Aquí se obtiene y usa el parámetro de configuración para la base de
-# datos de DynamoDB.
 tabla = dynamodb.Table(environ["DYNAMODB_TABLE"])
 
 

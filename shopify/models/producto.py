@@ -20,8 +20,6 @@ class BaseModel(PydanticBaseModel):
 
 
 class MinventoryLevelInput(BaseModel):
-    # TODO: Corrección para permitir que el inventario tenga valores negativos
-    # Línea anterior: availableQuantity: NonNegativeInt = Field(
     availableQuantity: int = Field(
         ...,
         alias='stock_act'
