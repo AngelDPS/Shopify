@@ -35,7 +35,13 @@ class imagenUrl(str):
 
 
 def obtenerUrls(file_names: list[str]) -> tuple[list[imagenUrl]]:
-    return [imagenUrl(fname) for fname in file_names]
+    # TODO: Inicio: Cambios para manejo de imágenes inexistentes
+    try:
+        return [imagenUrl(fname) for fname in file_names]
+    except Exception:
+        logger.warning("El producto va cargado sin imágenes.")
+        return []
+    # TODO: Final: Cambios para manejo de imágenes inexistentes
 
 
 class ProductoHandler:
@@ -59,8 +65,6 @@ class ProductoHandler:
             str: Campo de precio a usar.
         """
         try:
-            # TODO: Aquí se obtiene el parámetro de configuración para el
-            # campo del precio.
             return environ['PRECIO']
         except KeyError:
             logger.exception("No se encontró la variable de ambiente 'precio' "

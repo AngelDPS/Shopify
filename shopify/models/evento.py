@@ -27,13 +27,16 @@ class Marticulo(BaseModel):
     stock_com: int | None = None
     codigo_barra: str | None = None
     referencia: str | None = None
-    marca: str | None = None
+    marca: str | None = "Genérico"  # TODO: Cambio para manejar mejor campos
+    # faltantes
     cobra_impuesto: bool = Field(False, alias='taxable')
-    imagen_url: list[str] | None = None
-    habilitado: Habilitado | None | str = Field(None, alias='status')
-    shopifyGID: dict | None = None
-    PK: str | None = None
-    SK: str | None = None
+    # TODO: Inicio: Cambio para manejar mejor campos faltantes
+    imagen_url: list[str] | None = []
+    habilitado: Habilitado | None | str = Field(Habilitado(0), alias='status')
+    shopifyGID: dict | None = {}
+    PK: str | None = ""
+    SK: str | None = ""
+    # TODO: Final: Cambio para manejar mejor campos faltantes
     # created_at: datetime | None = None
     # updated_at: datetime | None = None
 
