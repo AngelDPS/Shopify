@@ -2,17 +2,111 @@ import logging
 from models.evento import Mlinea
 from models.coleccion import McollectionInput
 from re import search
-import libs.dynamodb as dynamodb
-import conexion as conexion
+from libs.dynamodb import (
+    actualizarGidLinea,
+    obtenerTienda,
+    actualizarGidPublicacionesTienda
+)
+from libs.conexion import (
+    ClienteShopify,
+    obtenerGidPublicaciones,
+    publicarRecurso
+)
 
 logger = logging.getLogger("shopify.coleccionHandler")
 
 
+def obtenerGidColeccion(nombre: str, client: ClienteShopify = None) -> str:
+    try:
+        client = client or ClienteShopify()
+        return client.execute(
+            """
+            query coleccionPorNombre($nombre: String) {
+                collections(query: $nombre, first: 1) {
+                    nodes {
+                    id
+                    }
+                }
+            }
+            """,
+            variables={"nombre": f"title:{nombre}"}
+        )['collections']['nodes'][0]['id']
+    except IndexError:
+        logger.warning(f"Colección con nombre '{nombre}' no encontrada.")
+        raise
+    except Exception:
+        logger.exception("Error al consultar el GID de colección.")
+        raise
+
+
+def crearColeccion(collectionInput: McollectionInput,
+                   client: ClienteShopify = None) -> str:
+    try:
+        client = client or ClienteShopify()
+        return client.execute(
+            """
+            mutation crearColeccion($input: CollectionInput!) {
+                collectionCreate(input: $input) {
+                    collection {
+                        id
+                    }
+                    userErrors {
+                        message
+                    }
+                }
+            }
+            """,
+            variables={
+                'input': collectionInput.dict(exclude_none=True)
+            }
+        )["collectionCreate"]["collection"]["id"]
+    except Exception:
+        logger.exception("Error encontrado al crear la colección en Shopify")
+        raise
+
+
+def modificarColeccion(collectionInput: McollectionInput,
+                       client: ClienteShopify = None):
+    client = client or ClienteShopify()
+    client.execute(
+        """
+        mutation modificarColeccion($input: CollectionInput!) {
+            collectionUpdate(input: $input) {
+                userErrors {
+                message
+                }
+            }
+        }
+        """,
+        variables={'input': collectionInput.dict(exclude_none=True,
+                                                 exclude_unset=True)},
+    )
+
+
 class ColeccionHandler:
+
+    def __init__(self, evento, client: ClienteShopify = None):
+        self.eventName = evento.eventName
+        self.NewImage = Mlinea.parse_obj(evento.NewImage)
+        self.OldImage = Mlinea.parse_obj(evento.OldImage)
+        self.cambios = Mlinea.parse_obj(
+            evento.obtenerCambios(self.NewImage, self.OldImage)
+        )
+        self.client = client or ClienteShopify()
+
+    @classmethod
+    def desde_linea(cls, linea: dict, client: ClienteShopify = None):
+        evento = type("evento", (), {
+            "eventName": "INSERT",
+            "NewImage": linea,
+            "OldImage": linea,
+            "obtenerCambios": (lambda x, y: {})
+        })
+        return cls(evento, client)
 
     def actualizarGidBD(self):
         logger.debug(f"GID de línea: {self.NewImage.shopifyGID}")
-        dynamodb.actualizarGidLinea(
+        actualizarGidLinea(
             PK=self.NewImage.PK,
             SK=self.NewImage.SK,
             GID=self.NewImage.shopifyGID
@@ -23,7 +117,7 @@ class ColeccionHandler:
             codigoCompania = search(r"\w+(?=#LINEAS)", self.NewImage.PK)[0]
             SK = self.NewImage.SK if not use_old else self.OldImage.SK
             codigoTienda = search(r"(?<=T#)\w+", SK)[0]
-            tienda = dynamodb.obtenerTienda(
+            tienda = obtenerTienda(
                 codigoCompania,
                 codigoTienda
             )
@@ -37,9 +131,9 @@ class ColeccionHandler:
                            "resultado obtenido.")
             tienda.setdefault('shopifyGID', {})
             tienda['shopifyGID']['publicaciones'] = (
-                conexion.obtenerGidPublicaciones()
+                obtenerGidPublicaciones(self.client)
             )
-            dynamodb.actualizarGidPublicacionesTienda(
+            actualizarGidPublicacionesTienda(
                 codigoCompania=codigoCompania,
                 codigoTienda=codigoTienda,
                 pubIDs=tienda['shopifyGID']['publicaciones']
@@ -50,31 +144,14 @@ class ColeccionHandler:
                              "publicación.")
             raise
 
-    def __init__(self, evento):
-        self.eventName = evento.eventName
-        self.NewImage = Mlinea.parse_obj(evento.NewImage)
-        self.OldImage = Mlinea.parse_obj(evento.OldImage)
-        self.cambios = Mlinea.parse_obj(
-            evento.obtenerCambios(self.NewImage, self.OldImage)
-        )
-
-    @classmethod
-    def desde_linea(cls, linea: dict):
-        evento = type("evento", (), {
-            "eventName": "INSERT",
-            "NewImage": linea,
-            "OldImage": linea,
-            "obtenerCambios": (lambda x, y: {})
-        })
-        return cls(evento)
-
     def publicar(self):
         """Publica el artículo en la tienda virtual y punto de venta de
         Shopify.
         """
-        conexion.publicarRecurso(
+        publicarRecurso(
             GID=self.NewImage.shopifyGID,
-            pubIDs=self.obtenerGidPublicaciones()
+            pubIDs=self.obtenerGidPublicaciones(),
+            client=self.client
         )
 
     def crear(self) -> list[dict]:
@@ -91,7 +168,8 @@ class ColeccionHandler:
             collectionInput = McollectionInput.parse_obj(
                 self.NewImage.dict(by_alias=True, exclude_none=True)
             )
-            self.NewImage.shopifyGID = conexion.crearColeccion(collectionInput)
+            self.NewImage.shopifyGID = crearColeccion(collectionInput,
+                                                      self.client)
             self.publicar()
             self.actualizarGidBD()
             logger.info("Colección creada exitosamente.")
@@ -107,7 +185,7 @@ class ColeccionHandler:
                                   exclude_unset=True)
             )
             collectionInput.id = self.NewImage.shopifyGID
-            conexion.modificarColeccion(collectionInput)
+            modificarColeccion(collectionInput, self.client)
             logger.info("La colección fue modificada exitosamente.")
             return "Coleccion modificada exitosamente."
         except Exception:
@@ -128,7 +206,8 @@ class ColeccionHandler:
                                    "existencia.")
                     try:
                         self.NewImage.shopifyGID = (
-                            conexion.obtenerGidColeccion(self.NewImage.nombre)
+                            obtenerGidColeccion(self.NewImage.nombre,
+                                                self.client)
                         )
                         self.actualizarGidBD()
                         respuesta = self.modificar()
