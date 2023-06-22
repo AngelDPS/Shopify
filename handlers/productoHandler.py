@@ -326,6 +326,7 @@ class ProductoHandler:
             evento.obtenerCambios(self.NewImage, self.OldImage)
         )
         self.client = client or ClienteShopify()
+        self.session = None
 
     def actualizarGidBD(self):
         """Actualiza el GID de Shopify para el producto usando la información
@@ -369,7 +370,8 @@ class ProductoHandler:
                            "Shopify y a guardar el resultado obtenido.")
             tienda.setdefault('shopifyGID', {})
             tienda['shopifyGID']['sucursal'] = obtenerGidTienda(
-                tienda['nombre'], self.client
+                tienda['nombre'],
+                self.session or self.client
             )
             actualizarGidTienda(
                 codigoCompania=self.NewImage.codigoCompania,
@@ -418,7 +420,8 @@ class ProductoHandler:
                            "Shopify y a guardar el resultado obtenido.")
             coleccion = ColeccionHandler.desde_linea(linea)
             coleccion.NewImage.shopifyGID = (
-                obtenerGidColeccion(linea['nombre'], self.client)
+                obtenerGidColeccion(linea['nombre'],
+                                    self.session or self.client)
             )
             coleccion.actualizarGidBD()
             return coleccion.NewImage.shopifyGID
@@ -466,7 +469,7 @@ class ProductoHandler:
                            "resultado obtenido.")
             tienda.setdefault('shopifyGID', {})
             tienda['shopifyGID']['publicaciones'] = (
-                obtenerGidPublicaciones(self.client)
+                obtenerGidPublicaciones(self.session or self.client)
             )
             actualizarGidPublicacionesTienda(
                 codigoCompania=self.NewImage.codigoCompania,
@@ -488,7 +491,7 @@ class ProductoHandler:
         publicarRecurso(
             GID=self.NewImage.shopifyGID['producto'],
             pubIDs=self.obtenerGidPublicaciones(),
-            client=self.client
+            client=self.session or self.client
         )
 
     def crear(self) -> list[str]:
@@ -518,8 +521,10 @@ class ProductoHandler:
             mediaInput = [McreateMediaInput(mediaContentType="IMAGE",
                                             originalSource=url)
                           for url in obtenerUrls(self.NewImage.imagen_url)]
-            self.NewImage.shopifyGID = crearProducto(productInput, mediaInput,
-                                                     self.client)
+            self.NewImage.shopifyGID = crearProducto(
+                productInput, mediaInput,
+                self.session or self.client
+            )
             self.publicar()
             # TODO: Que sucede si se publica y falla la actualización en
             # Dynamo?
@@ -550,7 +555,7 @@ class ProductoHandler:
                         self.OldImage.shopifyGID['variante']['inventario']
                     ),
                     locId=self.obtenerGidTienda(from_old=True),
-                    client=self.client
+                    client=self.session or self.client
                 )
                 return "Cambio de inventario"
             else:
@@ -575,7 +580,8 @@ class ProductoHandler:
                                   by_alias=True))
             if variantInput.dict(exclude_none=True, exclude_unset=True):
                 variantInput.id = self.OldImage.shopifyGID["variante"]["id"]
-                modificarVarianteProducto(variantInput, self.client)
+                modificarVarianteProducto(variantInput,
+                                          self.session or self.client)
                 return "Actualización de variante."
             else:
                 logger.info("La información suministrada no produjo cambios a"
@@ -605,7 +611,8 @@ class ProductoHandler:
                 ]
             if productInput.dict(exclude_none=True, exclude_unset=True):
                 productInput.id = self.OldImage.shopifyGID["producto"]
-                modificarProducto(productInput, self.client)
+                modificarProducto(productInput,
+                                  self.session or self.client)
                 return "Actualización de producto"
             else:
                 logger.info("La información suministrada no produjo cambios al"
@@ -632,7 +639,7 @@ class ProductoHandler:
                 self.NewImage.shopifyGID['imagenes'] |= (
                     anexarImagenArticulo(
                         self.OldImage.shopifyGID["producto"], anexarMediaInput,
-                        self.client
+                        self.session or self.client
                     )['imagenes']
                 )
                 msg += "Imágenes añadidas."
@@ -643,7 +650,7 @@ class ProductoHandler:
                 eliminarImagenArticulo(
                     self.NewImage.shopifyGID["producto"],
                     eliminarMediaIds,
-                    self.client
+                    self.session or self.client
                 )
                 msg += "Imágenes removidas."
             if not (urls_anexados or urls_removidos):
@@ -683,23 +690,25 @@ class ProductoHandler:
             ejecutadas.
         """
         try:
-            if self.eventName == "INSERT":
-                respuesta = self.crear()
-            elif self.cambios.dict(exclude_none=True, exclude_unset=True):
-                if self.NewImage.shopifyGID:
-                    respuesta = self.modificar()
-                else:
-                    logger.warning("En el evento no se encontró el GID de "
-                                   "Shopify proveniente de la base de datos. "
-                                   "Se asume que el producto correspondiente "
-                                   "no existe en Shopify. Se creará un "
-                                   "producto nuevo con la data actualizada.")
+            with self.client as self.session:
+                if self.eventName == "INSERT":
                     respuesta = self.crear()
-            else:
-                logger.info("Los cambios encontrados no ameritan "
-                            "actualizaciones en Shopify.")
-                respuesta = ["No se realizaron acciones."]
-            return respuesta
+                elif self.cambios.dict(exclude_none=True, exclude_unset=True):
+                    if self.NewImage.shopifyGID:
+                        respuesta = self.modificar()
+                    else:
+                        logger.warning(
+                            "En el evento no se encontró el GID de "
+                            "Shopify proveniente de la base de datos. "
+                            "Se asume que el producto correspondiente "
+                            "no existe en Shopify. Se creará un "
+                            "producto nuevo con la data actualizada.")
+                        respuesta = self.crear()
+                else:
+                    logger.info("Los cambios encontrados no ameritan "
+                                "actualizaciones en Shopify.")
+                    respuesta = ["No se realizaron acciones."]
+                return respuesta
         except Exception:
             logger.exception("Ocurrió un problema ejecutando la acción sobre "
                              "el producto.")

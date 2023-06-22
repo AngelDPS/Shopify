@@ -93,6 +93,7 @@ class ColeccionHandler:
             evento.obtenerCambios(self.NewImage, self.OldImage)
         )
         self.client = client or ClienteShopify()
+        self.session = None
 
     @classmethod
     def desde_linea(cls, linea: dict, client: ClienteShopify = None):
@@ -131,7 +132,7 @@ class ColeccionHandler:
                            "resultado obtenido.")
             tienda.setdefault('shopifyGID', {})
             tienda['shopifyGID']['publicaciones'] = (
-                obtenerGidPublicaciones(self.client)
+                obtenerGidPublicaciones(self.session or self.client)
             )
             actualizarGidPublicacionesTienda(
                 codigoCompania=codigoCompania,
@@ -151,7 +152,7 @@ class ColeccionHandler:
         publicarRecurso(
             GID=self.NewImage.shopifyGID,
             pubIDs=self.obtenerGidPublicaciones(),
-            client=self.client
+            client=self.session or self.client
         )
 
     def crear(self) -> list[dict]:
@@ -168,8 +169,10 @@ class ColeccionHandler:
             collectionInput = McollectionInput.parse_obj(
                 self.NewImage.dict(by_alias=True, exclude_none=True)
             )
-            self.NewImage.shopifyGID = crearColeccion(collectionInput,
-                                                      self.client)
+            self.NewImage.shopifyGID = crearColeccion(
+                collectionInput,
+                self.session or self.client
+            )
             self.publicar()
             self.actualizarGidBD()
             logger.info("Colección creada exitosamente.")
@@ -185,7 +188,7 @@ class ColeccionHandler:
                                   exclude_unset=True)
             )
             collectionInput.id = self.NewImage.shopifyGID
-            modificarColeccion(collectionInput, self.client)
+            modificarColeccion(collectionInput, self.session or self.client)
             logger.info("La colección fue modificada exitosamente.")
             return "Coleccion modificada exitosamente."
         except Exception:
@@ -194,33 +197,39 @@ class ColeccionHandler:
 
     def ejecutar(self):
         try:
-            if self.eventName == "INSERT":
-                respuesta = self.crear()
-            elif self.cambios.dict(exclude_none=True, exclude_unset=True):
-                if self.NewImage.shopifyGID:
-                    respuesta = self.modificar()
-                else:
-                    logger.warning("En el evento no se encontró el GID de "
-                                   "Shopify proveniente de la base de datos.\n"
-                                   "Se consultará a Shopify por su "
-                                   "existencia.")
-                    try:
-                        self.NewImage.shopifyGID = (
-                            obtenerGidColeccion(self.NewImage.nombre,
-                                                self.client)
-                        )
-                        self.actualizarGidBD()
+            with self.client as self.session:
+                if self.eventName == "INSERT":
+                    respuesta = self.crear()
+                elif self.cambios.dict(exclude_none=True, exclude_unset=True):
+                    if self.NewImage.shopifyGID:
                         respuesta = self.modificar()
-                    except IndexError:
-                        logger.warning("La colección correspondiente no existe"
-                                       " en Shopify. Se creará una colección "
-                                       "nueva con la data actualizada.")
-                        respuesta = self.crear()
-            else:
-                logger.info("Los cambios encontrados no ameritan "
-                            "actualizaciones en Shopify.")
-                respuesta = ["No se realizaron acciones."]
-            return respuesta
+                    else:
+                        logger.warning(
+                            "En el evento no se encontró el GID de "
+                            "Shopify proveniente de la base de datos.\n"
+                            "Se consultará a Shopify por su "
+                            "existencia."
+                        )
+                        try:
+                            self.NewImage.shopifyGID = (
+                                obtenerGidColeccion(
+                                    self.NewImage.nombre,
+                                    self.session or self.client)
+                            )
+                            self.actualizarGidBD()
+                            respuesta = self.modificar()
+                        except IndexError:
+                            logger.warning(
+                                "La colección correspondiente no existe"
+                                " en Shopify. Se creará una colección "
+                                "nueva con la data actualizada."
+                            )
+                            respuesta = self.crear()
+                else:
+                    logger.info("Los cambios encontrados no ameritan "
+                                "actualizaciones en Shopify.")
+                    respuesta = ["No se realizaron acciones."]
+                return respuesta
         except Exception:
             logger.exception("Ocurrió un problema ejecutando la acción sobre "
                              "la colección")

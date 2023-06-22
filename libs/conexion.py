@@ -1,5 +1,7 @@
 from logging import getLogger
 from gql import Client, gql
+from gql.client import SyncClientSession
+from gql.transport.async_transport import AsyncTransport
 from gql.transport.requests import RequestsHTTPTransport
 from libs.util import get_parameter
 
@@ -22,20 +24,21 @@ class ClienteShopify(Client):
         )
         super().__init__(transport=transport)
 
-    def execute(self, request_str, variables=None, operacion=None) -> dict:
+    def execute(self, request_str, variables=None, operacion=None,
+                **kwargs) -> dict:
         logger.debug(f'{variables = }')
         respuesta = super().execute(gql(request_str),
                                     variable_values=variables,
-                                    operation_name=operacion)
+                                    operation_name=operacion,
+                                    **kwargs)
         logger.debug(f"{respuesta = }")
-        print("pasa por Go")
+        print("Client pasa por Go")
         if respuesta[list(respuesta)[0]].get("userErrors"):
             msg = ("No fue posible realizar la operación:\n"
                    f"{respuesta[list(respuesta)[0]]['userErrors']}")
             logger.exception(msg)
             raise RuntimeError(msg)
         return respuesta
-
         # except TransportQueryError as err:
         #     logger.exception(
         #         "Hubo un problema con la consulta, "
@@ -54,8 +57,61 @@ class ClienteShopify(Client):
         #     )
         #     raise
 
+    def connect_sync(self):
+        r"""Connect synchronously with the underlying sync transport to
+        produce a session.
 
-def obtenerGidPublicaciones(client: ClienteShopify = None):
+        If you call this method, you should call the
+        :meth:`close_sync <gql.client.Client.close_sync>` method
+        for cleanup.
+        """
+
+        if isinstance(self.transport, AsyncTransport):
+            raise TypeError(
+                "Only a sync transport can be used."
+                " Use 'async with Client(...) as session:' instead"
+            )
+
+        self.transport.connect()
+
+        if not hasattr(self, "session"):
+            self.session = CustomSyncClientSession(client=self)
+
+        # Get schema from transport if needed
+        try:
+            if self.fetch_schema_from_transport and not self.schema:
+                self.session.fetch_schema()
+        except Exception:
+            # we don't know what type of exception is thrown here because it
+            # depends on the underlying transport; we just make sure that the
+            # transport is closed and re-raise the exception
+            self.transport.close()
+            raise
+
+        return self.session
+
+
+class CustomSyncClientSession(SyncClientSession):
+
+    def execute(self, request_str, variables=None, operacion=None,
+                **kwargs) -> dict:
+        logger.debug(f'{variables = }')
+        respuesta = super().execute(gql(request_str),
+                                    variable_values=variables,
+                                    operation_name=operacion,
+                                    **kwargs)
+        logger.debug(f"{respuesta = }")
+        if respuesta[list(respuesta)[0]].get("userErrors"):
+            msg = ("No fue posible realizar la operación:\n"
+                   f"{respuesta[list(respuesta)[0]]['userErrors']}")
+            logger.exception(msg)
+            raise RuntimeError(msg)
+        return respuesta
+
+
+def obtenerGidPublicaciones(
+    client: ClienteShopify | CustomSyncClientSession = None
+):
     client = client or ClienteShopify()
     pubIDs = [i["id"] for i in
               client.execute(
@@ -73,7 +129,7 @@ def obtenerGidPublicaciones(client: ClienteShopify = None):
 
 
 def publicarRecurso(GID: str, pubIDs: list[str],
-                    client: ClienteShopify = None):
+                    client: ClienteShopify | CustomSyncClientSession = None):
     try:
         client.execute(
             """
