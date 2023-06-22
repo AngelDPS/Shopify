@@ -1,10 +1,11 @@
 from handlers.sqsHandler import SQShandler
 from handlers.eventHandler import EventHandler
-from libs.util import obtener_codigo
+from libs.util import obtener_codigo, get_parameter
 from aws_lambda_powertools import Logger
 from typing import Any, Dict, List
 
-logger = Logger(service="shopify")
+logger = Logger(service="shopify",
+                level=get_parameter("loglevel") or "WARNING")
 
 
 @logger.inject_lambda_context(log_event=True)
@@ -25,7 +26,6 @@ def lambda_handler(event: List[dict], context: Any) -> List[Dict[str, str]]:
         list[dict[str, str]]: Lista de diccionarios con los mensajes
         retornados por cada evento procesado.
     """
-    logger.info("*** INICIO LAMBDA SHOPIFY ***")
 
     sqs = SQShandler("shopify")
     codigo = obtener_codigo(event)
@@ -71,5 +71,4 @@ def lambda_handler(event: List[dict], context: Any) -> List[Dict[str, str]]:
                         repetidos[codigo_actual]["ReceiptHandle"]
                     )
 
-    logger.info("*** FIN LAMBDA SHOPIFY ***")
     return r
