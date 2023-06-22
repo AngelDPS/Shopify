@@ -31,7 +31,8 @@ MediaContentType = Literal["EXTERNAL_VIDEO", "IMAGE", "MODEL_3D", "VIDEO"]
 class McreateMediaInput(BaseModel):
     alt: str | None = None
     mediaContentType: MediaContentType | None = None
-    originalSource: str
+    originalSource: str | None
+    fname: str = Field(..., exclude=True)
 
 
 PrivateMetafieldValueType = Literal["INTEGER", "JSON_STRING", "STRING"]

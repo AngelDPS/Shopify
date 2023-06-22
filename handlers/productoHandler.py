@@ -87,7 +87,7 @@ def crearProducto(productInput: MproductInput,
                                ['id'])
             },
             'imagenes': {
-                imInput.originalSource.fname: imNodes['id']
+                imInput.fname: imNodes['id']
                 for imInput, imNodes in zip(
                     mediaInput,
                     respuesta['productCreate']['product']['media']['nodes']
@@ -232,7 +232,7 @@ def anexarImagenArticulo(productId: str, mediaInput: list[McreateMediaInput],
     try:
         shopifyGID = {
             'imagenes': {
-                imInput.originalSource.fname: imNodes['id']
+                imInput.fname: imNodes['id']
                 for imInput, imNodes in zip(
                     mediaInput,
                     respuesta['productCreateMedia']['media']
@@ -273,29 +273,41 @@ def eliminarImagenArticulo(productId: str, mediaIds: list[str],
         raise
 
 
-class imagenUrl(str):
-
-    def __new__(cls, fname: str):
-        psigned = s3_client.generate_presigned_url(
+def generar_url(fname: str):
+    try:
+        return s3_client.generate_presigned_url(
             'get_object',
-            Params={'Bucket': getenv("bucketname"),
+            Params={'Bucket': get_parameter("bucketname"),
                     'Key': f"imagenes/{fname}"},
             ExpiresIn=3600
         )
-        instance = super().__new__(cls, psigned)
-        return instance
-
-    def __init__(self, fname: str):
-        self.fname = fname
-        super().__init__()
-
-
-def obtenerUrls(file_names: list[str]) -> tuple[list[imagenUrl]]:
-    try:
-        return [imagenUrl(fname) for fname in file_names]
     except Exception:
-        logger.warning("El producto va cargado sin imágenes.")
-        return []
+        logger.exception(
+            f"No se pudo generar el url para el archivo 'imagenes/{fname}'"
+            f", guardado en el s3 bucket {get_parameter('bucketname')}")
+        return None
+
+
+def obtener_CreateMediaInputs(file_names: list[str]
+                              ) -> list[McreateMediaInput]:
+    mediaInputs = [
+        McreateMediaInput(mediaContentType="IMAGE",
+                          originalSource=generar_url(fname),
+                          fname=fname)
+        for fname in file_names
+    ]
+    mediaInputs = [mInput for mInput in mediaInputs
+                   if mInput.originalSource is not None]
+    if not mediaInputs:
+        logger.warning("No se cargarán imágenes.")
+    return mediaInputs
+
+# def obtenerUrls(file_names: list[str]) -> list[str]:
+#     urls = [generar_url(fname) for fname in file_names]
+#     urls = [url for url in urls if url is not None]
+#     if not urls:
+#         logger.warning("El producto va cargado sin imágenes.")
+#     return urls
 
 
 class ProductoHandler:
@@ -482,8 +494,6 @@ class ProductoHandler:
                              "publicación.")
             raise
 
-    obtenerUrls = staticmethod(obtenerUrls)
-
     def publicar(self):
         """Publica el artículo en la tienda virtual y punto de venta de
         Shopify.
@@ -518,9 +528,7 @@ class ProductoHandler:
                 variants=[variantInput],
                 collectionsToJoin=[self.obtenerGidColeccion()]
             )
-            mediaInput = [McreateMediaInput(mediaContentType="IMAGE",
-                                            originalSource=url)
-                          for url in obtenerUrls(self.NewImage.imagen_url)]
+            mediaInput = obtener_CreateMediaInputs(self.NewImage.imagen_url)
             self.NewImage.shopifyGID = crearProducto(
                 productInput, mediaInput,
                 self.session or self.client
@@ -633,9 +641,7 @@ class ProductoHandler:
             )
             msg = ""
             if urls_anexados:
-                anexarMediaInput = [McreateMediaInput(mediaContentType="IMAGE",
-                                                      originalSource=url)
-                                    for url in self.obtenerUrls(urls_anexados)]
+                anexarMediaInput = obtener_CreateMediaInputs(urls_anexados)
                 self.NewImage.shopifyGID['imagenes'] |= (
                     anexarImagenArticulo(
                         self.OldImage.shopifyGID["producto"], anexarMediaInput,
@@ -646,7 +652,8 @@ class ProductoHandler:
             if urls_removidos:
                 eliminarMediaIds = [
                     self.NewImage.shopifyGID["imagenes"].pop(fname)
-                    for fname in urls_removidos]
+                    for fname in urls_removidos
+                ]
                 eliminarImagenArticulo(
                     self.NewImage.shopifyGID["producto"],
                     eliminarMediaIds,
