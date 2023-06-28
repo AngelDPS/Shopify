@@ -255,20 +255,24 @@ def eliminarImagenArticulo(productId: str, mediaIds: list[str],
                                    mediaIds: $mediaIds) {
                     mediaUserErrors {
                         message
+                        code
                     }
                 }
             }
             """,
             variables={'productId': productId, 'mediaIds': mediaIds}
         )
-        if respuesta['productDeleteMedia']['mediaUserErrors']:
-            msg = (f"{respuesta['productDeleteMedia']['mediaUserErrors']}")
-            logger.error(msg)
-            logger.info("Hubo un problema eliminando la imagen.")
+        media_user_errors = respuesta['productDeleteMedia']['mediaUserErrors']
+        if media_user_errors:
+            for n, error in enumerate(media_user_errors):
+                if error['code'] == 'MEDIA_DOES_NOT_EXIST':
+                    logger.warning("Una de las imágenes eliminadas no se "
+                                   "encontraba en Shopify.")
+            logger.error(media_user_errors)
         else:
             logger.info("Imágenes eliminadas correctamente.")
     except Exception:
-        logger.exception("Hubo un problema eliminando las imágenes")
+        logger.exception("Se encontraron problemas eliminando las imágenes.")
         raise
 
 
