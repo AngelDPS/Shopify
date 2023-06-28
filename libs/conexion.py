@@ -5,7 +5,7 @@ from gql.transport.async_transport import AsyncTransport
 from gql.transport.requests import RequestsHTTPTransport
 from libs.util import get_parameter
 
-logger = getLogger(__name__)
+logger = getLogger("shopify.conexion")
 
 
 class ClienteShopify(Client):
@@ -32,7 +32,6 @@ class ClienteShopify(Client):
                                     operation_name=operacion,
                                     **kwargs)
         logger.debug(f"{respuesta = }")
-        print("Client pasa por Go")
         if respuesta[list(respuesta)[0]].get("userErrors"):
             msg = ("No fue posible realizar la operación:\n"
                    f"{respuesta[list(respuesta)[0]]['userErrors']}")
@@ -99,8 +98,12 @@ class CustomSyncClientSession(SyncClientSession):
         respuesta = super().execute(gql(request_str),
                                     variable_values=variables,
                                     operation_name=operacion,
+                                    get_execution_result=True,
                                     **kwargs)
+        extensions = respuesta.extensions
+        respuesta = respuesta.data
         logger.debug(f"{respuesta = }")
+        logger.debug(f"{extensions = }")
         if respuesta[list(respuesta)[0]].get("userErrors"):
             msg = ("No fue posible realizar la operación:\n"
                    f"{respuesta[list(respuesta)[0]]['userErrors']}")

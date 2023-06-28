@@ -27,10 +27,8 @@ from libs.conexion import (
 from os import getenv
 import boto3
 
-logger = getLogger(__name__)
+logger = getLogger("shopify.productoHandler")
 s3_client = boto3.client('s3', region_name=getenv("AWS_REGION"),
-                         # TODO: ¿Debería utilizar el parámetro "region" en el
-                         # parameter store?
                          config=boto3.session.Config(signature_version='s3v4'))
 
 
@@ -265,9 +263,10 @@ def eliminarImagenArticulo(productId: str, mediaIds: list[str],
         )
         if respuesta['productDeleteMedia']['mediaUserErrors']:
             msg = (f"{respuesta['productDeleteMedia']['mediaUserErrors']}")
-            logger.exception(msg)
-            raise RuntimeError(msg)
-        logger.info("Imágenes eliminadas correctamente.")
+            logger.error(msg)
+            logger.info("Hubo un problema eliminando la imagen.")
+        else:
+            logger.info("Imágenes eliminadas correctamente.")
     except Exception:
         logger.exception("Hubo un problema eliminando las imágenes")
         raise
@@ -301,13 +300,6 @@ def obtener_CreateMediaInputs(file_names: list[str]
     if not mediaInputs:
         logger.warning("No se cargarán imágenes.")
     return mediaInputs
-
-# def obtenerUrls(file_names: list[str]) -> list[str]:
-#     urls = [generar_url(fname) for fname in file_names]
-#     urls = [url for url in urls if url is not None]
-#     if not urls:
-#         logger.warning("El producto va cargado sin imágenes.")
-#     return urls
 
 
 class ProductoHandler:
@@ -537,7 +529,6 @@ class ProductoHandler:
             # TODO: Que sucede si se publica y falla la actualización en
             # Dynamo?
             self.actualizarGidBD()
-            # TODO: Porqué se devuelve una lista de str?
             return ["Producto creado!"]
         except Exception:
             logger.exception("No fue posible crear el producto.")
@@ -642,18 +633,23 @@ class ProductoHandler:
             msg = ""
             if urls_anexados:
                 anexarMediaInput = obtener_CreateMediaInputs(urls_anexados)
-                self.NewImage.shopifyGID['imagenes'] |= (
-                    anexarImagenArticulo(
-                        self.OldImage.shopifyGID["producto"], anexarMediaInput,
-                        self.session or self.client
-                    )['imagenes']
-                )
-                msg += "Imágenes añadidas."
+                logger.debug(anexarMediaInput)
+                if anexarMediaInput:
+                    self.NewImage.shopifyGID['imagenes'] |= (
+                        anexarImagenArticulo(
+                            self.OldImage.shopifyGID["producto"],
+                            anexarMediaInput,
+                            self.session or self.client
+                        )['imagenes']
+                    )
+                    msg += "Imágenes añadidas."
             if urls_removidos:
+                logger.debug(urls_removidos)
                 eliminarMediaIds = [
                     self.NewImage.shopifyGID["imagenes"].pop(fname)
                     for fname in urls_removidos
                 ]
+                logger.debug(eliminarMediaIds)
                 eliminarImagenArticulo(
                     self.NewImage.shopifyGID["producto"],
                     eliminarMediaIds,
