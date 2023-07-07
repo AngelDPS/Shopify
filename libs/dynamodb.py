@@ -1,16 +1,23 @@
 import boto3
-from boto3.dynamodb.conditions import Attr
 from botocore.exceptions import ClientError
 from os import getenv
 from logging import getLogger
 
-dynamodb = boto3.resource("dynamodb")
-tabla = dynamodb.Table(f"{getenv('NOMBRE_COMPANIA')}-db")
-logger = getLogger(__name__)
+logger = getLogger("shopify.dynamodb")
+
+
+def obtener_tabla():
+    if getenv('ENV') == 'local':
+        session = boto3.Session(profile_name='angel')
+    else:
+        session = boto3
+    return (
+        session.resource("dynamodb").Table(f"{getenv('NOMBRE_COMPANIA')}-db")
+    )
 
 
 def actualizarGidArticulo(PK: str, SK: str, GID: str):
-    tabla.update_item(
+    obtener_tabla().update_item(
         Key={"PK": PK, "SK": SK},
         UpdateExpression="SET shopifyGID = :productID",
         ExpressionAttributeValues={":productID": GID}
@@ -25,7 +32,7 @@ def obtenerTienda(codigoCompania: str, codigoTienda: str
         "PK": f"{codigoCompania.upper()}#TIENDAS",
         "SK": f"T#{codigoTienda.upper()}"
     }
-    return tabla.get_item(
+    return obtener_tabla().get_item(
         Key=key
     )['Item']
 
@@ -45,7 +52,7 @@ def obtenerGidTienda(codigoCompania: str, codigoTienda: str
         "PK": f"{codigoCompania.upper()}#TIENDAS",
         "SK": f"T#{codigoTienda.upper()}"
     }
-    return tabla.get_item(
+    return obtener_tabla().get_item(
         Key=key,
         ProjectionExpression="shopifyGID.sucursal"
     )['Item']
@@ -66,7 +73,7 @@ def obtenerNombreTienda(codigoCompania: str, codigoTienda: str
         "PK": f"{codigoCompania.upper()}#TIENDAS",
         "SK": f"T#{codigoTienda.upper()}"
     }
-    return tabla.get_item(
+    return obtener_tabla().get_item(
         Key=key,
         ProjectionExpression="nombre"
     )['Item']
@@ -78,6 +85,7 @@ def actualizarGidTienda(codigoCompania: str, codigoTienda: str, GID: str):
         "SK": f"T#{codigoTienda.upper()}"
     }
     try:
+        tabla = obtener_tabla()
         tabla.update_item(
             Key=key,
             UpdateExpression="SET shopifyGID.sucursal = :gid",
@@ -106,14 +114,14 @@ def obtenerGidLinea(codigoCompania: str, codigoTienda: str,
         "PK": f"{codigoCompania.upper()}#LINEAS",
         "SK": f"T#{codigoTienda}#L#{co_lin}"
     }
-    return tabla.get_item(
+    return obtener_tabla().get_item(
         Key=key,
         ProjectionExpression="shopifyGID"
     )['Item']
 
 
 def actualizarGidLinea(PK: str, SK: str, GID: str):
-    tabla.update_item(
+    obtener_tabla().update_item(
         Key={"PK": PK, "SK": SK},
         UpdateExpression="SET shopifyGID = :gid",
         ExpressionAttributeValues={
@@ -128,7 +136,7 @@ def obtenerLinea(codigoCompania: str, codigoTienda: str,
         "PK": f"{codigoCompania.upper()}#LINEAS",
         "SK": f"T#{codigoTienda}#L#{co_lin}"
     }
-    return tabla.get_item(
+    return obtener_tabla().get_item(
         Key=key
     )['Item']
 
@@ -139,7 +147,7 @@ def obtenerGidPublicacionesTienda(codigoCompania: str, codigoTienda: str
         "PK": f"{codigoCompania.upper()}#TIENDAS",
         "SK": f"T#{codigoTienda.upper()}"
     }
-    return tabla.get_item(
+    return obtener_tabla().get_item(
         Key=key,
         ProjectionExpression="shopifyGID.publicaciones"
     )['Item']
@@ -152,6 +160,7 @@ def actualizarGidPublicacionesTienda(codigoCompania: str, codigoTienda: str,
         "SK": f"T#{codigoTienda.upper()}"
     }
     try:
+        tabla = obtener_tabla()
         tabla.update_item(
             Key=key,
             UpdateExpression="SET shopifyGID.publicaciones = :pubIDs",
@@ -172,12 +181,3 @@ def actualizarGidPublicacionesTienda(codigoCompania: str, codigoTienda: str,
             )
         else:
             raise
-
-
-def consultarArticulos(co_art: str, codigoTienda: str):
-    respuesta = tabla.scan(
-        FilterExpression=(
-            Attr("co_art").eq(co_art) & Attr("codigoTienda").ne(codigoTienda)
-        )
-    )
-    return respuesta

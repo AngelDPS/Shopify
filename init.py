@@ -1,11 +1,18 @@
-from handlers.sqsHandler import SQShandler
-from handlers.eventHandler import EventHandler
-from libs.util import obtener_codigo, get_parameter
+from os import environ, getenv
+from libs.util import get_parameter
+from handlers.eventHandler import procesar_todo
+from handlers.productoHandler import ProductoHandler
+from handlers.coleccionHandler import ColeccionHandler
 from aws_lambda_powertools import Logger
 from typing import Any, Dict, List
 
 logger = Logger(service="shopify",
                 level=get_parameter("loglevel") or "WARNING")
+
+environ["ENV"] = "local"
+if getenv("ENV") == "local":
+    environ["NOMBRE_COMPANIA"] = "generico2022"
+    environ["AWS_REGION"] = "us-east-2"
 
 
 @logger.inject_lambda_context(log_event=True)
@@ -26,49 +33,9 @@ def lambda_handler(event: List[dict], context: Any) -> List[Dict[str, str]]:
         list[dict[str, str]]: Lista de diccionarios con los mensajes
         retornados por cada evento procesado.
     """
-
-    sqs = SQShandler("shopify")
-    codigo = obtener_codigo(event)
-    eventos_en_cola, ids, codigos_en_cola, repetidos = sqs.process_messages()
-
-    idx = sqs.procesar_entidades_repetidas(
-        codigo=codigo,
-        lista_codigos=codigos_en_cola,
-        eventos=eventos_en_cola,
-        NewImage=event[0]["dynamodb"]["NewImage"]
-    )
-    if idx is not None:
-        logger.warning(
-            f'Se encontraron eventos en cola para para "{codigo}" '
-            'siendo procesado.'
-        )
-        eventos_en_cola.insert(0, eventos_en_cola.pop(idx))
-        ids.insert(0, ids.pop(idx))
-    else:
-        eventos_en_cola.insert(0, event)
-        ids.insert(0, None)
-
-    logger.info(f"Eventos para procesar: {eventos_en_cola}")
-
-    r = []
-    for EVs, ID in zip(eventos_en_cola, ids):
-        codigo_actual = obtener_codigo(EVs)
-        try:
-            for EV in EVs:
-                r.append(EventHandler(EV).ejecutar())
-                logger.debug(r[-1])
-        except Exception as err:
-            mensaje = (f"Ocurrió un error manejado el evento:\n{EV}."
-                       f"Se levantó la excepción '{err}'.")
-            logger.exception(mensaje)
-            if codigo_actual == codigo:
-                raise Exception(mensaje) from err
-        else:
-            if ID:
-                sqs.delete_message(ID)
-                if codigo_actual in repetidos:
-                    sqs.delete_message(
-                        repetidos[codigo_actual]["ReceiptHandle"]
-                    )
-
-    return r
+    handler_mapping = {
+                'articulos': ProductoHandler,
+                'lineas': ColeccionHandler
+                # 'tiendas': SucursalHandler
+            }
+    return procesar_todo('shopify', event, handler_mapping)

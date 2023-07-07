@@ -86,37 +86,35 @@ def modificarColeccion(collectionInput: McollectionInput,
 class ColeccionHandler:
 
     def __init__(self, evento, client: ClienteShopify = None):
-        self.eventName = evento.eventName
-        self.NewImage = Mlinea.parse_obj(evento.NewImage)
-        self.OldImage = Mlinea.parse_obj(evento.OldImage)
-        self.cambios = Mlinea.parse_obj(
-            evento.obtenerCambios(self.NewImage, self.OldImage)
-        )
+        self.event_name = evento.event_name
+        self.new_image = Mlinea.parse_obj(evento.new_image)
+        self.old_image = Mlinea.parse_obj(evento.old_image)
+        self.cambios = Mlinea.parse_obj(evento.cambios)
         self.client = client or ClienteShopify()
         self.session = None
 
     @classmethod
     def desde_linea(cls, linea: dict, client: ClienteShopify = None):
         evento = type("evento", (), {
-            "eventName": "INSERT",
-            "NewImage": linea,
-            "OldImage": linea,
-            "obtenerCambios": (lambda x, y: {})
+            "event_name": "INSERT",
+            "new_image": linea,
+            "old_image": linea,
+            "obtener_cambios": (lambda x, y: {})
         })
         return cls(evento, client)
 
     def actualizarGidBD(self):
-        logger.debug(f"GID de línea: {self.NewImage.shopifyGID}")
+        logger.debug(f"GID de línea: {self.new_image.shopifyGID}")
         actualizarGidLinea(
-            PK=self.NewImage.PK,
-            SK=self.NewImage.SK,
-            GID=self.NewImage.shopifyGID
+            PK=self.new_image.PK,
+            SK=self.new_image.SK,
+            GID=self.new_image.shopifyGID
         )
 
     def obtenerGidPublicaciones(self, use_old: bool = False) -> str:
         try:
-            codigoCompania = search(r"\w+(?=#LINEAS)", self.NewImage.PK)[0]
-            SK = self.NewImage.SK if not use_old else self.OldImage.SK
+            codigoCompania = search(r"\w+(?=#LINEAS)", self.new_image.PK)[0]
+            SK = self.new_image.SK if not use_old else self.old_image.SK
             codigoTienda = search(r"(?<=T#)\w+", SK)[0]
             tienda = obtenerTienda(
                 codigoCompania,
@@ -150,7 +148,7 @@ class ColeccionHandler:
         Shopify.
         """
         publicarRecurso(
-            GID=self.NewImage.shopifyGID,
+            GID=self.new_image.shopifyGID,
             pubIDs=self.obtenerGidPublicaciones(),
             client=self.session or self.client
         )
@@ -167,9 +165,9 @@ class ColeccionHandler:
 
         try:
             collectionInput = McollectionInput.parse_obj(
-                self.NewImage.dict(by_alias=True, exclude_none=True)
+                self.new_image.dict(by_alias=True, exclude_none=True)
             )
-            self.NewImage.shopifyGID = crearColeccion(
+            self.new_image.shopifyGID = crearColeccion(
                 collectionInput,
                 self.session or self.client
             )
@@ -187,7 +185,7 @@ class ColeccionHandler:
                 self.cambios.dict(by_alias=True, exclude_none=True,
                                   exclude_unset=True)
             )
-            collectionInput.id = self.NewImage.shopifyGID
+            collectionInput.id = self.new_image.shopifyGID
             modificarColeccion(collectionInput, self.session or self.client)
             logger.info("La colección fue modificada exitosamente.")
             return "Coleccion modificada exitosamente."
@@ -198,10 +196,10 @@ class ColeccionHandler:
     def ejecutar(self):
         try:
             with self.client as self.session:
-                if self.eventName == "INSERT":
+                if self.event_name == "INSERT":
                     respuesta = self.crear()
                 elif self.cambios.dict(exclude_none=True, exclude_unset=True):
-                    if self.NewImage.shopifyGID:
+                    if self.new_image.shopifyGID:
                         respuesta = self.modificar()
                     else:
                         logger.warning(
@@ -211,9 +209,9 @@ class ColeccionHandler:
                             "existencia."
                         )
                         try:
-                            self.NewImage.shopifyGID = (
+                            self.new_image.shopifyGID = (
                                 obtenerGidColeccion(
-                                    self.NewImage.nombre,
+                                    self.new_image.nombre,
                                     self.session or self.client)
                             )
                             self.actualizarGidBD()

@@ -4,12 +4,7 @@ TODO
 logs*
 *__pycache__*
 .graphqlrc*
-DB/GENERICO2022.json
 .vscode*
-TestingFunctionAngl*
-angel-tabla.json
-eventos.py
-docs/Colecciones.md
-docs/Productos.md
-docs/Sucursales.md
-dynamodb.py.bak*
+dynamodb_output.json
+cargar_articulos_dynamo.py
+*.ipynb*

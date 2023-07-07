@@ -321,18 +321,16 @@ class ProductoHandler:
             encontrados en los campos entre la imagen nueva y vieja.
             Defaults to None.
         """
-        self.eventName = evento.eventName
+        self.eventName = evento.event_name
         campo_precio = get_parameter('SHOPIFY_PRECIO')
-        for label in ['NewImage', 'OldImage']:
+        for label in ['new_image', 'old_image']:
             setattr(self, label,
                     Marticulo.parse_obj(getattr(evento, label)))
             getattr(self, label).precio = getattr(evento, label)[campo_precio]
             getattr(self, label).habilitado = (
                 getattr(self, label).habilitado.name
             )
-        self.cambios = Marticulo.parse_obj(
-            evento.obtenerCambios(self.NewImage, self.OldImage)
-        )
+        self.cambios = Marticulo.parse_obj(evento.cambios)
         self.client = client or ClienteShopify()
         self.session = None
 
@@ -340,11 +338,11 @@ class ProductoHandler:
         """Actualiza el GID de Shopify para el producto usando la información
         guardada en la instancia.
         """
-        logger.debug(f"GID de artículo: {self.NewImage.shopifyGID}")
+        logger.debug(f"GID de artículo: {self.new_image.shopifyGID}")
         actualizarGidArticulo(
-            PK=self.NewImage.PK,
-            SK=self.NewImage.SK,
-            GID=self.NewImage.shopifyGID
+            PK=self.new_image.PK,
+            SK=self.new_image.SK,
+            GID=self.new_image.shopifyGID
         )
 
     def obtenerGidTienda(self, from_old: bool = False) -> str:
@@ -362,11 +360,11 @@ class ProductoHandler:
         Returns:
             str: El GID de shopify asociado al código de tienda del artículo.
         """
-        codigoTienda = (self.NewImage.codigoTienda if not from_old
-                        else self.OldImage.codigoTienda)
+        codigoTienda = (self.new_image.codigoTienda if not from_old
+                        else self.old_image.codigoTienda)
         try:
             tienda = obtenerTienda(
-                codigoCompania=self.NewImage.codigoCompania,
+                codigoCompania=self.new_image.codigoCompania,
                 codigoTienda=codigoTienda
             )
             return tienda['shopifyGID']['sucursal']
@@ -382,7 +380,7 @@ class ProductoHandler:
                 self.session or self.client
             )
             actualizarGidTienda(
-                codigoCompania=self.NewImage.codigoCompania,
+                codigoCompania=self.new_image.codigoCompania,
                 codigoTienda=codigoTienda,
                 GID=tienda['shopifyGID']['sucursal']
             )
@@ -409,13 +407,13 @@ class ProductoHandler:
         Returns:
             str: El GID de shopify asociado al código de línea del artículo.
         """
-        codigoTienda = (self.NewImage.codigoTienda if not from_old
-                        else self.OldImage.codigoTienda)
-        co_lin = (self.NewImage.co_lin if not from_old
-                  else self.OldImage.co_lin)
+        codigoTienda = (self.new_image.codigoTienda if not from_old
+                        else self.old_image.codigoTienda)
+        co_lin = (self.new_image.co_lin if not from_old
+                  else self.old_image.co_lin)
         try:
             linea = obtenerLinea(
-                codigoCompania=self.NewImage.codigoCompania,
+                codigoCompania=self.new_image.codigoCompania,
                 codigoTienda=codigoTienda,
                 co_lin=co_lin
             )
@@ -436,10 +434,11 @@ class ProductoHandler:
         except IndexError:
             pass
         except UnboundLocalError:
-            logger.error(f"El código de línea '{co_lin}' no parece existir"
-                         " en la base de datos para la tienda "
-                         f"{codigoTienda}. No se harán cambios con la "
-                         "colección asociada en Shopify.")
+            logger.wawrning(
+                f"El código de línea '{co_lin}' no parece existir en la base "
+                f"de datos para la tienda {codigoTienda}. No se harán cambios "
+                "con la colección asociada en Shopify."
+            )
             return "gid://shopify/Collection/0"
         try:
             coleccion.crear()
@@ -460,11 +459,11 @@ class ProductoHandler:
         Returns:
             str: El GID de shopify asociado al código de tienda del artículo.
         """
-        codigoTienda = (self.NewImage.codigoTienda if not from_old
-                        else self.OldImage.codigoTienda)
+        codigoTienda = (self.new_image.codigoTienda if not from_old
+                        else self.old_image.codigoTienda)
         try:
             tienda = obtenerTienda(
-                codigoCompania=self.NewImage.codigoCompania,
+                codigoCompania=self.new_image.codigoCompania,
                 codigoTienda=codigoTienda
             )
             return tienda['shopifyGID']['publicaciones']
@@ -480,7 +479,7 @@ class ProductoHandler:
                 obtenerGidPublicaciones(self.session or self.client)
             )
             actualizarGidPublicacionesTienda(
-                codigoCompania=self.NewImage.codigoCompania,
+                codigoCompania=self.new_image.codigoCompania,
                 codigoTienda=codigoTienda,
                 pubIDs=tienda['shopifyGID']['publicaciones']
             )
@@ -495,7 +494,7 @@ class ProductoHandler:
         Shopify.
         """
         publicarRecurso(
-            GID=self.NewImage.shopifyGID['producto'],
+            GID=self.new_image.shopifyGID['producto'],
             pubIDs=self.obtenerGidPublicaciones(),
             client=self.session or self.client
         )
@@ -510,22 +509,22 @@ class ProductoHandler:
         logger.info("Creando producto a partir de artículo.")
         try:
             inventory = [MinventoryLevelInput(
-                availableQuantity=(self.NewImage.stock_act
-                                   - self.NewImage.stock_com),
+                availableQuantity=(self.new_image.stock_act
+                                   - self.new_image.stock_com),
                 locationId=self.obtenerGidTienda()
             )]
             variantInput = MproductVariantInput(
-                **self.NewImage.dict(by_alias=True,
-                                     exclude_none=True),
+                **self.new_image.dict(by_alias=True,
+                                      exclude_none=True),
                 inventoryQuantities=inventory)
             productInput = MproductInput(
-                **self.NewImage.dict(by_alias=True,
-                                     exclude_none=True),
+                **self.new_image.dict(by_alias=True,
+                                      exclude_none=True),
                 variants=[variantInput],
                 collectionsToJoin=[self.obtenerGidColeccion()]
             )
-            mediaInput = obtener_CreateMediaInputs(self.NewImage.imagen_url)
-            self.NewImage.shopifyGID = crearProducto(
+            mediaInput = obtener_CreateMediaInputs(self.new_image.imagen_url)
+            self.new_image.shopifyGID = crearProducto(
                 productInput, mediaInput,
                 self.session or self.client
             )
@@ -546,16 +545,16 @@ class ProductoHandler:
             str: Cadena con información de la operación.
         """
         try:
-            delta_act = (self.cambios.stock_act - self.OldImage.stock_act
+            delta_act = (self.cambios.stock_act - self.old_image.stock_act
                          if self.cambios.stock_act is not None else 0)
-            delta_com = (self.cambios.stock_com - self.OldImage.stock_com
+            delta_com = (self.cambios.stock_com - self.old_image.stock_com
                          if self.cambios.stock_com is not None else 0)
             delta = delta_act - delta_com
             if delta != 0:
                 modificarInventario(
                     delta,
                     invId=(
-                        self.OldImage.shopifyGID['variante']['inventario']
+                        self.old_image.shopifyGID['variante']['inventario']
                     ),
                     locId=self.obtenerGidTienda(from_old=True),
                     client=self.session or self.client
@@ -582,7 +581,7 @@ class ProductoHandler:
                 self.cambios.dict(exclude_none=True, exclude_unset=True,
                                   by_alias=True))
             if variantInput.dict(exclude_none=True, exclude_unset=True):
-                variantInput.id = self.OldImage.shopifyGID["variante"]["id"]
+                variantInput.id = self.old_image.shopifyGID["variante"]["id"]
                 modificarVarianteProducto(variantInput,
                                           self.session or self.client)
                 return "Actualización de variante."
@@ -613,7 +612,7 @@ class ProductoHandler:
                     self.obtenerGidColeccion(from_old=True)
                 ]
             if productInput.dict(exclude_none=True, exclude_unset=True):
-                productInput.id = self.OldImage.shopifyGID["producto"]
+                productInput.id = self.old_image.shopifyGID["producto"]
                 modificarProducto(productInput,
                                   self.session or self.client)
                 return "Actualización de producto"
@@ -629,19 +628,19 @@ class ProductoHandler:
     def _cambiosImagenes(self):
         try:
             urls_anexados = list(
-                set(self.NewImage.imagen_url) - set(self.OldImage.imagen_url)
+                set(self.new_image.imagen_url) - set(self.old_image.imagen_url)
             )
             urls_removidos = list(
-                set(self.OldImage.imagen_url) - set(self.NewImage.imagen_url)
+                set(self.old_image.imagen_url) - set(self.new_image.imagen_url)
             )
             msg = ""
             if urls_anexados:
                 anexarMediaInput = obtener_CreateMediaInputs(urls_anexados)
                 logger.debug(anexarMediaInput)
                 if anexarMediaInput:
-                    self.NewImage.shopifyGID['imagenes'] |= (
+                    self.new_image.shopifyGID['imagenes'] |= (
                         anexarImagenArticulo(
-                            self.OldImage.shopifyGID["producto"],
+                            self.old_image.shopifyGID["producto"],
                             anexarMediaInput,
                             self.session or self.client
                         )['imagenes']
@@ -650,12 +649,12 @@ class ProductoHandler:
             if urls_removidos:
                 logger.debug(urls_removidos)
                 eliminarMediaIds = [
-                    self.NewImage.shopifyGID["imagenes"].pop(fname)
+                    self.new_image.shopifyGID["imagenes"].pop(fname)
                     for fname in urls_removidos
                 ]
                 logger.debug(eliminarMediaIds)
                 eliminarImagenArticulo(
-                    self.NewImage.shopifyGID["producto"],
+                    self.new_image.shopifyGID["producto"],
                     eliminarMediaIds,
                     self.session or self.client
                 )
@@ -701,7 +700,7 @@ class ProductoHandler:
                 if self.eventName == "INSERT":
                     respuesta = self.crear()
                 elif self.cambios.dict(exclude_none=True, exclude_unset=True):
-                    if self.NewImage.shopifyGID:
+                    if self.new_image.shopifyGID:
                         respuesta = self.modificar()
                     else:
                         logger.warning(
