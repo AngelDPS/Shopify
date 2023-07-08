@@ -11,4 +11,4 @@ La función requiere la definición de las siguientes variables de entorno para 
 En caso de que el código de línea encontrado en el registro del artículo no se corresponda al código de línea que identifica al registro de línea.
 Esto hace imposible identificar la línea y no permite que ocurran cambios en Shopify.
 
-De igual manera, si el atributo de shopifyGID del registro de línea no apunta a una colección en Shopify, los cambios de línea de los artículos no se reflejarán en Shopify.
+De igual manera, si el atributo de shopify_id del registro de línea no apunta a una colección en Shopify, los cambios de línea de los artículos no se reflejarán en Shopify.

@@ -83,8 +83,11 @@ def get_parameter(key: str) -> Any:
 
 
 class ItemHandler(ABC):
-    OldImage: dict | BaseModel
+    old_image: dict | BaseModel
     cambios: dict | BaseModel
+
+    @abstractmethod
+    def __init__(self): pass
 
     @abstractmethod
     def crear(self): pass
@@ -93,7 +96,7 @@ class ItemHandler(ABC):
     def modificar(self): pass
 
     @abstractmethod
-    def ejecutar(self, web_store: str, ID: str | None) -> list[str]:
+    def ejecutar(self, web_store: str, id: str | None) -> list[str]:
         """Ejecuta la acción requerida por el evento procesado en la instancia.
 
         Returns:
@@ -103,7 +106,7 @@ class ItemHandler(ABC):
         try:
             if self.cambios.dict(exclude_unset=True):
                 logger.info(f"Se aplicarán los cambios en {web_store}.")
-                if not ID:
+                if not id:
                     logger.info(
                         "En el evento no se encontró el ID de "
                         f"{web_store} proveniente de la base de "
@@ -113,7 +116,7 @@ class ItemHandler(ABC):
                         "actualizada."
                     )
                     self.cambios = self.cambios.parse_obj(
-                        self.OldImage.dict()
+                        self.old_image.dict()
                         | self.cambios.dict(exclude_unset=True)
                     )
                     respuesta = self.crear()

@@ -3,20 +3,21 @@ from models.evento import Mlinea
 from models.coleccion import McollectionInput
 from re import search
 from libs.dynamodb import (
-    actualizarGidLinea,
-    obtenerTienda,
-    actualizarGidPublicacionesTienda
+    guardar_linea_id,
+    obtener_tienda,
+    guardar_publicaciones_id
 )
 from libs.conexion import (
     ClienteShopify,
-    obtenerGidPublicaciones,
-    publicarRecurso
+    obtener_publicaciones_id,
+    publicar_recurso
 )
+from libs.util import ItemHandler
 
 logger = logging.getLogger("shopify.coleccionHandler")
 
 
-def obtenerGidColeccion(nombre: str, client: ClienteShopify = None) -> str:
+def shopify_obtener_id(nombre: str, client: ClienteShopify = None) -> str:
     try:
         client = client or ClienteShopify()
         return client.execute(
@@ -39,8 +40,8 @@ def obtenerGidColeccion(nombre: str, client: ClienteShopify = None) -> str:
         raise
 
 
-def crearColeccion(collectionInput: McollectionInput,
-                   client: ClienteShopify = None) -> str:
+def shopify_crear_coleccion(collectionInput: McollectionInput,
+                            client: ClienteShopify = None) -> str:
     try:
         client = client or ClienteShopify()
         return client.execute(
@@ -83,11 +84,9 @@ def modificarColeccion(collectionInput: McollectionInput,
     )
 
 
-class ColeccionHandler:
+class ColeccionHandler(ItemHandler):
 
     def __init__(self, evento, client: ClienteShopify = None):
-        self.event_name = evento.event_name
-        self.new_image = Mlinea.parse_obj(evento.new_image)
         self.old_image = Mlinea.parse_obj(evento.old_image)
         self.cambios = Mlinea.parse_obj(evento.cambios)
         self.client = client or ClienteShopify()
@@ -96,31 +95,30 @@ class ColeccionHandler:
     @classmethod
     def desde_linea(cls, linea: dict, client: ClienteShopify = None):
         evento = type("evento", (), {
-            "event_name": "INSERT",
-            "new_image": linea,
             "old_image": linea,
-            "obtener_cambios": (lambda x, y: {})
+            "cambios": {}
         })
         return cls(evento, client)
 
-    def actualizarGidBD(self):
-        logger.debug(f"GID de línea: {self.new_image.shopifyGID}")
-        actualizarGidLinea(
-            PK=self.new_image.PK,
-            SK=self.new_image.SK,
-            GID=self.new_image.shopifyGID
+    def guardar_id_dynamo(self):
+        logger.debug(f"GID de línea: {self.old_image.shopify_id}")
+        guardar_linea_id(
+            PK=self.cambios_image.PK or self.old_image.PK,
+            SK=self.cambios.SK or self.old_image.SK,
+            GID=self.old_image.shopify_id
         )
 
-    def obtenerGidPublicaciones(self, use_old: bool = False) -> str:
+    def obtener_publicaciones_id(self) -> str:
         try:
-            codigoCompania = search(r"\w+(?=#LINEAS)", self.new_image.PK)[0]
-            SK = self.new_image.SK if not use_old else self.old_image.SK
+            codigoCompania = search(r"\w+(?=#LINEAS)",
+                                    self.cambios.PK or self.old_image.PK)[0]
+            SK = self.cambios.SK or self.old_image.SK
             codigoTienda = search(r"(?<=T#)\w+", SK)[0]
-            tienda = obtenerTienda(
+            tienda = obtener_tienda(
                 codigoCompania,
                 codigoTienda
             )
-            return tienda['shopifyGID']['publicaciones']
+            return tienda['shopify_id']['publicaciones']
         except KeyError:
             pass
         try:
@@ -128,30 +126,20 @@ class ColeccionHandler:
                            "publicación en la base de datos. Se procederá a "
                            "consultar el GID a Shopify y a guardar el "
                            "resultado obtenido.")
-            tienda.setdefault('shopifyGID', {})
-            tienda['shopifyGID']['publicaciones'] = (
-                obtenerGidPublicaciones(self.session or self.client)
+            tienda.setdefault('shopify_id', {})
+            tienda['shopify_id']['publicaciones'] = (
+                obtener_publicaciones_id(self.session or self.client)
             )
-            actualizarGidPublicacionesTienda(
+            guardar_publicaciones_id(
                 codigoCompania=codigoCompania,
                 codigoTienda=codigoTienda,
-                pubIDs=tienda['shopifyGID']['publicaciones']
+                pubIDs=tienda['shopify_id']['publicaciones']
             )
-            return tienda['shopifyGID']['publicaciones']
+            return tienda['shopify_id']['publicaciones']
         except Exception:
             logger.exception("Error al obtener los GIDs de los canales de "
                              "publicación.")
             raise
-
-    def publicar(self):
-        """Publica el artículo en la tienda virtual y punto de venta de
-        Shopify.
-        """
-        publicarRecurso(
-            GID=self.new_image.shopifyGID,
-            pubIDs=self.obtenerGidPublicaciones(),
-            client=self.session or self.client
-        )
 
     def crear(self) -> list[dict]:
         """Función dedicada a crear una colección en Shopify dada
@@ -165,30 +153,47 @@ class ColeccionHandler:
 
         try:
             collectionInput = McollectionInput.parse_obj(
-                self.new_image.dict(by_alias=True, exclude_none=True)
+                self.cambios.dict(by_alias=True, exclude_none=True)
             )
-            self.new_image.shopifyGID = crearColeccion(
+            self.old_image.shopify_id = shopify_crear_coleccion(
                 collectionInput,
                 self.session or self.client
             )
-            self.publicar()
-            self.actualizarGidBD()
+            self.guardar_id_dynamo()
             logger.info("Colección creada exitosamente.")
             return "Colección creada exitosamente."
         except Exception:
             logger.exception("No fue posible crear la colección")
             raise
 
+    def _publicar(self):
+        """Publica el artículo en la tienda virtual y punto de venta de
+        Shopify.
+        """
+        if self.cambios.shopify_id.get("producto"):
+            publicar_recurso(
+                GID=self.old_image.shopify_id,
+                pubIDs=self.obtener_publicaciones_id(),
+                client=self.session or self.client
+            )
+            return "Colección publicada!"
+        else:
+            return ""
+
     def modificar(self) -> list[dict]:
+        r = []
         try:
+            r.append(self._publicar())
             collectionInput = McollectionInput.parse_obj(
                 self.cambios.dict(by_alias=True, exclude_none=True,
                                   exclude_unset=True)
             )
-            collectionInput.id = self.new_image.shopifyGID
-            modificarColeccion(collectionInput, self.session or self.client)
-            logger.info("La colección fue modificada exitosamente.")
-            return "Coleccion modificada exitosamente."
+            if collectionInput.dict(exclude_unset=True):
+                collectionInput.id = self.old_image.shopify_id
+                modificarColeccion(collectionInput,
+                                   self.session or self.client)
+                r.append("Coleccion modificada exitosamente.")
+            return r
         except Exception:
             logger.exception("No fue posible modificar la colección.")
             raise
@@ -196,37 +201,17 @@ class ColeccionHandler:
     def ejecutar(self):
         try:
             with self.client as self.session:
-                if self.event_name == "INSERT":
-                    respuesta = self.crear()
-                elif self.cambios.dict(exclude_none=True, exclude_unset=True):
-                    if self.new_image.shopifyGID:
-                        respuesta = self.modificar()
-                    else:
-                        logger.warning(
-                            "En el evento no se encontró el GID de "
-                            "Shopify proveniente de la base de datos.\n"
-                            "Se consultará a Shopify por su "
-                            "existencia."
+                if not self.old_image.shopify_id and self.old_image.nombre:
+                    try:
+                        self.old_image.shopify_id = shopify_obtener_id(
+                            self.old_image.nombre,
+                            self.session or self.client
                         )
-                        try:
-                            self.new_image.shopifyGID = (
-                                obtenerGidColeccion(
-                                    self.new_image.nombre,
-                                    self.session or self.client)
-                            )
-                            self.actualizarGidBD()
-                            respuesta = self.modificar()
-                        except IndexError:
-                            logger.warning(
-                                "La colección correspondiente no existe"
-                                " en Shopify. Se creará una colección "
-                                "nueva con la data actualizada."
-                            )
-                            respuesta = self.crear()
-                else:
-                    logger.info("Los cambios encontrados no ameritan "
-                                "actualizaciones en Shopify.")
-                    respuesta = ["No se realizaron acciones."]
+                        self.guardar_id_dynamo()
+                    except IndexError:
+                        pass
+                respuesta = super().ejecutar("Shopify",
+                                             self.old_image.shopify_id)
                 return respuesta
         except Exception:
             logger.exception("Ocurrió un problema ejecutando la acción sobre "

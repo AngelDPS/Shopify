@@ -1,6 +1,5 @@
 from pydantic import Field, BaseModel as PydanticBaseModel
 from decimal import Decimal
-from enum import Enum
 # from datetime import datetime
 
 
@@ -10,35 +9,29 @@ class BaseModel(PydanticBaseModel):
         anystr_strip_whitespace = True
 
 
-class Habilitado(Enum):
-    ARCHIVED = 0
-    ACTIVE = 1
-
-
 class Marticulo(BaseModel):
+    PK: str | None = ""
+    SK: str | None = ""
+    habilitado: bool | None | str = False
     art_des: str | None = None
     codigoCompania: str | None = None
     codigoTienda: str | None = None
     co_art: str | None = None
     co_lin: str | None = None
-    des_shopify: str | None = None
     precio: Decimal | None = Field(None, alias='price')
     stock_act: int | None = None
     stock_com: int | None = None
     codigo_barra: str | None = None
     referencia: str | None = None
-    marca: str | None = "Genérico"  # TODO: Cambio para manejar mejor campos
-    # faltantes
-    cobra_impuesto: bool = Field(False, alias='taxable')
-    # TODO: Inicio: Cambio para manejar mejor campos faltantes
+    marca: str | None = "N/A"
     imagen_url: list[str] | None = []
-    habilitado: Habilitado | None | str = Field(Habilitado(0), alias='status')
-    shopifyGID: dict | None = {}
-    PK: str | None = ""
-    SK: str | None = ""
-    # TODO: Final: Cambio para manejar mejor campos faltantes
-    # created_at: datetime | None = None
-    # updated_at: datetime | None = None
+    modelo: str | None = "N/A"
+
+
+class MArticuloShopify(Marticulo):
+    cobra_impuesto: bool = Field(False, alias='taxable')
+    shopify_des: str | None = None
+    shopify_id: dict | None = {}
 
 
 class Mlinea(BaseModel):
@@ -49,7 +42,7 @@ class Mlinea(BaseModel):
     co_lin: str | None = None
     co_lin_padre: str | None = None
     descuento: Decimal | None = None
-    shopifyGID: str | None = None
+    shopify_id: str | None = None
     des_shopify: str | None = None
     # created_at: datetime | None = None
     # updated_at: datetime | None = None

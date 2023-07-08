@@ -90,7 +90,7 @@ class McollectionInput(BaseModel):
                                Generado automáticamente del título de la
                                colección.""")
     id: str | None = Field(None, title="ID",
-                           alias="shopifyGID",
+                           alias="shopify_id",
                            description="""
                            Identificador único de la colección.
                            Utilizado para modificarla.""")

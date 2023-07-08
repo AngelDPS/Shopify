@@ -3,10 +3,10 @@ from libs.conexion import ClienteShopify
 # from models.sucursal import MsucursalInput
 # import re
 
-logger = getLogger(__name__)
+logger = getLogger("shopify.sucursal")
 
 
-def obtenerGidTienda(nombre: str, client: ClienteShopify = None) -> str:
+def shopify_obtener_id(nombre: str, client: ClienteShopify = None) -> str:
     try:
         client = client or ClienteShopify()
         return client.execute(

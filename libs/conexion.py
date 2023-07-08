@@ -112,7 +112,7 @@ class CustomSyncClientSession(SyncClientSession):
         return respuesta
 
 
-def obtenerGidPublicaciones(
+def obtener_publicaciones_id(
     client: ClienteShopify | CustomSyncClientSession = None
 ):
     client = client or ClienteShopify()
@@ -131,8 +131,8 @@ def obtenerGidPublicaciones(
     return pubIDs
 
 
-def publicarRecurso(GID: str, pubIDs: list[str],
-                    client: ClienteShopify | CustomSyncClientSession = None):
+def publicar_recurso(GID: str, pubIDs: list[str],
+                     client: ClienteShopify | CustomSyncClientSession = None):
     try:
         client.execute(
             """

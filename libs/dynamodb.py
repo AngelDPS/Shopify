@@ -16,16 +16,16 @@ def obtener_tabla():
     )
 
 
-def actualizarGidArticulo(PK: str, SK: str, GID: str):
+def guardar_articulo_id(PK: str, SK: str, GID: str):
     obtener_tabla().update_item(
         Key={"PK": PK, "SK": SK},
-        UpdateExpression="SET shopifyGID = :productID",
+        UpdateExpression="SET shopify_id = :productID",
         ExpressionAttributeValues={":productID": GID}
     )
 
 
-def obtenerTienda(codigoCompania: str, codigoTienda: str
-                  ) -> dict[str, dict[str, str]]:
+def obtener_tienda(codigoCompania: str, codigoTienda: str
+                   ) -> dict[str, dict[str, str]]:
     """Función para obtener la data de la tienda dada por codigoTienda.
     """
     key = {
@@ -37,49 +37,7 @@ def obtenerTienda(codigoCompania: str, codigoTienda: str
     )['Item']
 
 
-def obtenerGidTienda(codigoCompania: str, codigoTienda: str
-                     ) -> dict[str, dict[str, str]]:
-    """Función para obtener el GID asociado a codigoTienda.
-
-    Args:
-        use_old (bool): Booleano usado para indicar si se utiliza
-        OldImage para extraer el codigo de tienda del artículo
-
-    Returns:
-        str: El GID de shopify asociado al código de tienda del artículo.
-    """
-    key = {
-        "PK": f"{codigoCompania.upper()}#TIENDAS",
-        "SK": f"T#{codigoTienda.upper()}"
-    }
-    return obtener_tabla().get_item(
-        Key=key,
-        ProjectionExpression="shopifyGID.sucursal"
-    )['Item']
-
-
-def obtenerNombreTienda(codigoCompania: str, codigoTienda: str
-                        ) -> dict[str, str]:
-    """Función para obtener el GID asociado a codigoTienda.
-
-    Args:
-        use_old (bool): Booleano usado para indicar si se utiliza
-        OldImage para extraer el codigo de tienda del artículo
-
-    Returns:
-        str: El GID de shopify asociado al código de tienda del artículo.
-    """
-    key = {
-        "PK": f"{codigoCompania.upper()}#TIENDAS",
-        "SK": f"T#{codigoTienda.upper()}"
-    }
-    return obtener_tabla().get_item(
-        Key=key,
-        ProjectionExpression="nombre"
-    )['Item']
-
-
-def actualizarGidTienda(codigoCompania: str, codigoTienda: str, GID: str):
+def guardar_tienda_id(codigoCompania: str, codigoTienda: str, GID: str):
     key = {
         "PK": f"{codigoCompania.upper()}#TIENDAS",
         "SK": f"T#{codigoTienda.upper()}"
@@ -88,7 +46,7 @@ def actualizarGidTienda(codigoCompania: str, codigoTienda: str, GID: str):
         tabla = obtener_tabla()
         tabla.update_item(
             Key=key,
-            UpdateExpression="SET shopifyGID.sucursal = :gid",
+            UpdateExpression="SET shopify_id.sucursal = :gid",
             ExpressionAttributeValues={
                 ":gid": GID
             }
@@ -97,7 +55,7 @@ def actualizarGidTienda(codigoCompania: str, codigoTienda: str, GID: str):
         if err.response['Error']['Code'] == 'ValidationException':
             tabla.update_item(
                 Key=key,
-                UpdateExpression="SET shopifyGID = :gid",
+                UpdateExpression="SET shopify_id = :gid",
                 ExpressionAttributeValues={
                     ":gid": {
                         "sucursal": GID
@@ -108,30 +66,18 @@ def actualizarGidTienda(codigoCompania: str, codigoTienda: str, GID: str):
             raise
 
 
-def obtenerGidLinea(codigoCompania: str, codigoTienda: str,
-                    co_lin: str) -> dict[str, str]:
-    key = {
-        "PK": f"{codigoCompania.upper()}#LINEAS",
-        "SK": f"T#{codigoTienda}#L#{co_lin}"
-    }
-    return obtener_tabla().get_item(
-        Key=key,
-        ProjectionExpression="shopifyGID"
-    )['Item']
-
-
-def actualizarGidLinea(PK: str, SK: str, GID: str):
+def guardar_linea_id(PK: str, SK: str, GID: str):
     obtener_tabla().update_item(
         Key={"PK": PK, "SK": SK},
-        UpdateExpression="SET shopifyGID = :gid",
+        UpdateExpression="SET shopify_id = :gid",
         ExpressionAttributeValues={
             ":gid": GID
         }
     )
 
 
-def obtenerLinea(codigoCompania: str, codigoTienda: str,
-                 co_lin: str) -> dict[str, any]:
+def obtener_linea(codigoCompania: str, codigoTienda: str,
+                  co_lin: str) -> dict[str, any]:
     key = {
         "PK": f"{codigoCompania.upper()}#LINEAS",
         "SK": f"T#{codigoTienda}#L#{co_lin}"
@@ -141,20 +87,8 @@ def obtenerLinea(codigoCompania: str, codigoTienda: str,
     )['Item']
 
 
-def obtenerGidPublicacionesTienda(codigoCompania: str, codigoTienda: str
-                                  ) -> dict[str, dict[str, str]]:
-    key = {
-        "PK": f"{codigoCompania.upper()}#TIENDAS",
-        "SK": f"T#{codigoTienda.upper()}"
-    }
-    return obtener_tabla().get_item(
-        Key=key,
-        ProjectionExpression="shopifyGID.publicaciones"
-    )['Item']
-
-
-def actualizarGidPublicacionesTienda(codigoCompania: str, codigoTienda: str,
-                                     pubIDs: list[str]):
+def guardar_publicaciones_id(codigoCompania: str, codigoTienda: str,
+                             pubIDs: list[str]):
     key = {
         "PK": f"{codigoCompania.upper()}#TIENDAS",
         "SK": f"T#{codigoTienda.upper()}"
@@ -163,7 +97,7 @@ def actualizarGidPublicacionesTienda(codigoCompania: str, codigoTienda: str,
         tabla = obtener_tabla()
         tabla.update_item(
             Key=key,
-            UpdateExpression="SET shopifyGID.publicaciones = :pubIDs",
+            UpdateExpression="SET shopify_id.publicaciones = :pubIDs",
             ExpressionAttributeValues={
                 ":pubIDs": pubIDs
             }
@@ -172,7 +106,7 @@ def actualizarGidPublicacionesTienda(codigoCompania: str, codigoTienda: str,
         if err.response['Error']['Code'] == 'ValidationException':
             tabla.update_item(
                 Key=key,
-                UpdateExpression="SET shopifyGID = :pubIDs",
+                UpdateExpression="SET shopify_id = :pubIDs",
                 ExpressionAttributeValues={
                     ":pubIDs": {
                         "publicaciones": pubIDs

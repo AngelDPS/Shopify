@@ -5,36 +5,37 @@ from models.producto import (
     MinventoryLevelInput
 )
 from models.misc import McreateMediaInput
-from models.evento import Marticulo
+from models.evento import MArticuloShopify as MArticulo
+from handlers.eventHandler import EventHandler
 from handlers.coleccionHandler import (
     ColeccionHandler,
-    obtenerGidColeccion
+    shopify_obtener_id as obtener_coleccion_id
 )
-from handlers.sucursalHandler import obtenerGidTienda
+from handlers.sucursalHandler import (
+    shopify_obtener_id as obtener_sucursal_id
+)
 from libs.dynamodb import (
-    actualizarGidArticulo,
-    obtenerTienda,
-    actualizarGidTienda,
-    obtenerLinea,
-    actualizarGidPublicacionesTienda
+    guardar_articulo_id,
+    obtener_tienda,
+    guardar_tienda_id,
+    obtener_linea,
+    guardar_publicaciones_id
 )
-from libs.util import get_parameter
+from libs.util import get_parameter, ItemHandler
 from libs.conexion import (
     ClienteShopify,
-    obtenerGidPublicaciones,
-    publicarRecurso
+    obtener_publicaciones_id,
+    publicar_recurso
 )
-from os import getenv
+from enum import Enum
 import boto3
 
 logger = getLogger("shopify.productoHandler")
-s3_client = boto3.client('s3', region_name=getenv("AWS_REGION"),
-                         config=boto3.session.Config(signature_version='s3v4'))
 
 
-def crearProducto(productInput: MproductInput,
-                  mediaInput: list[McreateMediaInput],
-                  client: ClienteShopify = None) -> str:
+def shopify_crear_producto(productInput: MproductInput,
+                           mediaInput: list[McreateMediaInput],
+                           client: ClienteShopify = None) -> str:
     try:
         client = client or ClienteShopify()
         respuesta = client.execute(
@@ -75,7 +76,7 @@ def crearProducto(productInput: MproductInput,
         logger.exception("Error encontrado al crear el producto en Shopify.")
         raise
     try:
-        shopifyGID = {
+        shopify_id = {
             'producto': respuesta['productCreate']['product']['id'],
             'variante': {
                 'id': (respuesta['productCreate']['product']
@@ -92,15 +93,15 @@ def crearProducto(productInput: MproductInput,
                 )
             }
         }
-        return shopifyGID
+        return shopify_id
     except (KeyError, IndexError):
         logger.exception("Formato inesperado de respuesta para la creación "
                          "del producto.")
         raise
 
 
-def modificarInventario(delta: int, invId: str, locId: str,
-                        client: ClienteShopify = None):
+def shopify_cambiar_inventario(delta: int, invId: str, locId: str,
+                               client: ClienteShopify = None):
     try:
         reason = "restock" if delta > 0 else "shrinkage"
         client = client or ClienteShopify()
@@ -145,8 +146,8 @@ def modificarInventario(delta: int, invId: str, locId: str,
         raise
 
 
-def modificarVarianteProducto(variantInput: MproductVariantInput,
-                              client: ClienteShopify = None):
+def shopify_cambiar_variante(variantInput: MproductVariantInput,
+                             client: ClienteShopify = None):
     try:
         client = client or ClienteShopify()
         client.execute(
@@ -171,8 +172,8 @@ def modificarVarianteProducto(variantInput: MproductVariantInput,
         raise
 
 
-def modificarProducto(productInput: MproductInput,
-                      client: ClienteShopify = None):
+def shopify_cambiar_producto(productInput: MproductInput,
+                             client: ClienteShopify = None):
     try:
         client = client or ClienteShopify()
         client.execute(
@@ -195,8 +196,8 @@ def modificarProducto(productInput: MproductInput,
         raise
 
 
-def anexarImagenArticulo(productId: str, mediaInput: list[McreateMediaInput],
-                         client: ClienteShopify = None):
+def shopify_anexar_imagen(productId: str, mediaInput: list[McreateMediaInput],
+                          client: ClienteShopify = None):
     try:
         client = client or ClienteShopify()
         respuesta = client.execute(
@@ -228,7 +229,7 @@ def anexarImagenArticulo(productId: str, mediaInput: list[McreateMediaInput],
         logger.exception("Hubo un problema anexando las imágenes")
         raise
     try:
-        shopifyGID = {
+        shopify_id = {
             'imagenes': {
                 imInput.fname: imNodes['id']
                 for imInput, imNodes in zip(
@@ -237,15 +238,15 @@ def anexarImagenArticulo(productId: str, mediaInput: list[McreateMediaInput],
                 )
             }
         }
-        return shopifyGID
+        return shopify_id
     except (KeyError, IndexError):
         logger.exception("Formato inesperado de respuesta para la creación "
                          "del producto.")
         raise
 
 
-def eliminarImagenArticulo(productId: str, mediaIds: list[str],
-                           client: ClienteShopify = None):
+def shopify_borrar_imagen(productId: str, mediaIds: list[str],
+                          client: ClienteShopify = None):
     try:
         client = client or ClienteShopify()
         respuesta = client.execute(
@@ -278,6 +279,10 @@ def eliminarImagenArticulo(productId: str, mediaIds: list[str],
 
 def generar_url(fname: str):
     try:
+        s3_client = boto3.client(
+            's3', region_name='us-east-2',
+            config=boto3.session.Config(signature_version='s3v4')
+        )
         return s3_client.generate_presigned_url(
             'get_object',
             Params={'Bucket': get_parameter("bucketname"),
@@ -291,67 +296,72 @@ def generar_url(fname: str):
         return None
 
 
-def obtener_CreateMediaInputs(file_names: list[str]
-                              ) -> list[McreateMediaInput]:
-    mediaInputs = [
+def generar_media_inputs(file_names: list[str]) -> list[McreateMediaInput]:
+    media_inputs = [
         McreateMediaInput(mediaContentType="IMAGE",
                           originalSource=generar_url(fname),
                           fname=fname)
         for fname in file_names
     ]
-    mediaInputs = [mInput for mInput in mediaInputs
-                   if mInput.originalSource is not None]
-    if not mediaInputs:
+    media_inputs = [m_input for m_input in media_inputs
+                    if m_input.originalSource is not None]
+    if not media_inputs:
         logger.warning("No se cargarán imágenes.")
-    return mediaInputs
+    return media_inputs
 
 
-class ProductoHandler:
+class Habilitado(Enum):
+    ARCHIVED = 0
+    ACTIVE = 1
 
-    def __init__(self, evento, client: ClienteShopify = None):
+
+class ProductoHandler(ItemHandler):
+
+    def __init__(self, evento: EventHandler, client: ClienteShopify = None):
         """Constructor de la clase
 
         Args:
-            NewImage (Marticulo): Imagen de la base de datos para artículos
-            con el artículo a crear (para INSERT) o con la data actualizada
-            (para MODIFY).
-            OldImage (Marticulo, optional): En caso de MODIFY, la imagen
-            previa a las actualizaciones. Defaults to None.
-            cambios (Marticulo, optional): En caso de MODIFY, los cambios
-            encontrados en los campos entre la imagen nueva y vieja.
-            Defaults to None.
+            evento (EventHandler):
+            client (ClienteShopify, optional): Defaults to None.
         """
-        self.eventName = evento.event_name
         campo_precio = get_parameter('SHOPIFY_PRECIO')
-        for label in ['new_image', 'old_image']:
-            setattr(self, label,
-                    Marticulo.parse_obj(getattr(evento, label)))
-            getattr(self, label).precio = getattr(evento, label)[campo_precio]
-            getattr(self, label).habilitado = (
-                getattr(self, label).habilitado.name
-            )
-        self.cambios = Marticulo.parse_obj(evento.cambios)
+
+        self.cambios = evento.cambios
+        self.cambios.get('shopify_id', {}).pop('imagenes', None)
+        self.cambios.get('shopify_id', {}).pop('variante', None)
+        if campo_precio in self.cambios:
+            self.cambios['precio'] = self.cambios[campo_precio]
+        if 'habilitado' in self.cambios:
+            self.cambios['habilitado'] = Habilitado(
+                self.cambios['habilitado']
+            ).name.upper()
+        self.cambios = MArticulo.parse_obj(self.cambios)
+
+        self.old_image = evento.old_image
+        if self.old_image:
+            self.old_image['precio'] = self.old_image[campo_precio]
+            self.old_image['habilitado'] = Habilitado(
+                self.old_image['habilitado']
+            ).name.upper()
+        self.old_image = MArticulo.parse_obj(self.old_image)
+
         self.client = client or ClienteShopify()
         self.session = None
 
-    def actualizarGidBD(self):
+    def actualizar_id_dynamo(self):
         """Actualiza el GID de Shopify para el producto usando la información
         guardada en la instancia.
         """
-        logger.debug(f"GID de artículo: {self.new_image.shopifyGID}")
-        actualizarGidArticulo(
-            PK=self.new_image.PK,
-            SK=self.new_image.SK,
-            GID=self.new_image.shopifyGID
+        logger.debug(f"GID del artículo: {self.old_image.shopify_id}")
+        guardar_articulo_id(
+            PK=self.old_image.PK or self.cambios.PK,
+            SK=self.old_image.SK or self.cambios.SK,
+            GID=self.old_image.shopify_id
         )
 
-    def obtenerGidTienda(self, from_old: bool = False) -> str:
+    def obtener_tienda_id(self) -> str:
         """Función para obtener el GID asociado a la tienda en la base de datos
         especificada por el codigoTienda guardado en la instancia.
-
-        Args:
-            from_old (bool): Booleano usado para indicar si se utiliza
-            OldImage para extraer el codigo de tienda del artículo
 
         Raises:
             ValueError: En caso que el código de tienda no corresponda a ningún
@@ -360,45 +370,37 @@ class ProductoHandler:
         Returns:
             str: El GID de shopify asociado al código de tienda del artículo.
         """
-        codigoTienda = (self.new_image.codigoTienda if not from_old
-                        else self.old_image.codigoTienda)
+        codigo_tienda = (self.cambios.codigoTienda
+                         or self.old_image.codigoTienda)
+        codigo_compania = (self.cambios.codigoCompania
+                           or self.old_image.codigoCompania)
         try:
-            tienda = obtenerTienda(
-                codigoCompania=self.new_image.codigoCompania,
-                codigoTienda=codigoTienda
-            )
-            return tienda['shopifyGID']['sucursal']
+            tienda = obtener_tienda(codigo_compania, codigo_tienda)
+            return tienda['shopify_id']['sucursal']
         except KeyError:
             pass
         try:
             logger.warning("No se encontró el GID de la tienda en la base "
                            "de datos. Se procederá a consultar el GID a "
                            "Shopify y a guardar el resultado obtenido.")
-            tienda.setdefault('shopifyGID', {})
-            tienda['shopifyGID']['sucursal'] = obtenerGidTienda(
+            tienda.setdefault('shopify_id', {})
+            tienda['shopify_id']['sucursal'] = obtener_sucursal_id(
                 tienda['nombre'],
                 self.session or self.client
             )
-            actualizarGidTienda(
-                codigoCompania=self.new_image.codigoCompania,
-                codigoTienda=codigoTienda,
-                GID=tienda['shopifyGID']['sucursal']
-            )
-            return tienda['shopifyGID']['sucursal']
+            guardar_tienda_id(codigo_compania, codigo_tienda,
+                              GID=tienda['shopify_id']['sucursal'])
+            return tienda['shopify_id']['sucursal']
         except UnboundLocalError:
-            raise ValueError(f"El código de tienda '{codigoTienda}' no parece "
-                             "existir en la base de datos.")
+            raise ValueError(f"El código de tienda '{codigo_tienda}' no parece"
+                             " existir en la base de datos.")
         except Exception:
             logger.exception("No se pudo obtener el GID de la tienda.")
             raise
 
-    def obtenerGidColeccion(self, from_old: bool = False) -> str:
+    def obtener_coleccion_id(self, use_old: bool = False) -> str:
         """Función para obtener el GID asociado a la línea en la base de datos
         especificada por el co_lin y codigoTienda guardados en la instancia.
-
-        Args:
-            from_old (bool): Booleano usado para indicar si se utiliza
-            OldImage para extraer el codigoTienda y co_lin del artículo
 
         Raises:
             ValueError: En caso que el código de línea no corresponda a ningún
@@ -407,17 +409,19 @@ class ProductoHandler:
         Returns:
             str: El GID de shopify asociado al código de línea del artículo.
         """
-        codigoTienda = (self.new_image.codigoTienda if not from_old
-                        else self.old_image.codigoTienda)
-        co_lin = (self.new_image.co_lin if not from_old
-                  else self.old_image.co_lin)
+        codigo_tienda = (self.cambios.codigoTienda
+                         or self.old_image.codigoTienda)
+        co_lin = (
+            (self.cambios.co_lin or self.old_image.co_lin)
+            if not use_old else self.old_image.co_lin
+        )
         try:
-            linea = obtenerLinea(
-                codigoCompania=self.new_image.codigoCompania,
-                codigoTienda=codigoTienda,
+            linea = obtener_linea(
+                self.cambios.codigoCompania or self.old_image.codigoCompania,
+                codigo_tienda,
                 co_lin=co_lin
             )
-            return linea['shopifyGID']
+            return linea['shopify_id']
         except KeyError:
             pass
         try:
@@ -425,29 +429,29 @@ class ProductoHandler:
                            "de datos. Se procederá a consultar el GID a "
                            "Shopify y a guardar el resultado obtenido.")
             coleccion = ColeccionHandler.desde_linea(linea)
-            coleccion.NewImage.shopifyGID = (
-                obtenerGidColeccion(linea['nombre'],
-                                    self.session or self.client)
+            coleccion.old_image.shopify_id = (
+                obtener_coleccion_id(linea['nombre'],
+                                     self.session or self.client)
             )
-            coleccion.actualizarGidBD()
-            return coleccion.NewImage.shopifyGID
+            coleccion.guardar_id_dynamo()
+            return coleccion.old_image.shopify_id
         except IndexError:
             pass
         except UnboundLocalError:
             logger.wawrning(
                 f"El código de línea '{co_lin}' no parece existir en la base "
-                f"de datos para la tienda {codigoTienda}. No se harán cambios "
-                "con la colección asociada en Shopify."
+                f"de datos para la tienda {codigo_tienda}. No se harán "
+                "cambios con la colección asociada en Shopify."
             )
             return "gid://shopify/Collection/0"
         try:
             coleccion.crear()
-            return coleccion.NewImage.shopifyGID
+            return coleccion.old_image.shopify_id
         except Exception:
             logger.exception("No se pudo obtener el GID de la línea.")
             raise
 
-    def obtenerGidPublicaciones(self, from_old: bool = False) -> str:
+    def obtener_publicaciones_id(self) -> str:
         """Función para obtener el GID de los canales de publicación
         asociados a la tienda en la base de datos
         especificada por el codigoTienda guardado en la instancia.
@@ -459,14 +463,13 @@ class ProductoHandler:
         Returns:
             str: El GID de shopify asociado al código de tienda del artículo.
         """
-        codigoTienda = (self.new_image.codigoTienda if not from_old
-                        else self.old_image.codigoTienda)
+        codigo_tienda = (self.cambios.codigoTienda
+                         or self.old_image.codigoTienda)
+        codigo_compania = (self.cambios.codigoCompania
+                           or self.old_image.codigoCompania)
         try:
-            tienda = obtenerTienda(
-                codigoCompania=self.new_image.codigoCompania,
-                codigoTienda=codigoTienda
-            )
-            return tienda['shopifyGID']['publicaciones']
+            tienda = obtener_tienda(codigo_compania, codigo_tienda)
+            return tienda['shopify_id']['publicaciones']
         except KeyError:
             pass
         try:
@@ -474,30 +477,17 @@ class ProductoHandler:
                            "publicación en la base de datos. Se procederá a "
                            "consultar el GID a Shopify y a guardar el "
                            "resultado obtenido.")
-            tienda.setdefault('shopifyGID', {})
-            tienda['shopifyGID']['publicaciones'] = (
-                obtenerGidPublicaciones(self.session or self.client)
+            tienda.setdefault('shopify_id', {})
+            tienda['shopify_id']['publicaciones'] = (
+                obtener_publicaciones_id(self.session or self.client)
             )
-            actualizarGidPublicacionesTienda(
-                codigoCompania=self.new_image.codigoCompania,
-                codigoTienda=codigoTienda,
-                pubIDs=tienda['shopifyGID']['publicaciones']
-            )
-            return tienda['shopifyGID']['publicaciones']
+            guardar_publicaciones_id(codigo_compania, codigo_tienda,
+                                     tienda['shopify_id']['publicaciones'])
+            return tienda['shopify_id']['publicaciones']
         except Exception:
             logger.exception("Error al obtener los GIDs de los canales de "
                              "publicación.")
             raise
-
-    def publicar(self):
-        """Publica el artículo en la tienda virtual y punto de venta de
-        Shopify.
-        """
-        publicarRecurso(
-            GID=self.new_image.shopifyGID['producto'],
-            pubIDs=self.obtenerGidPublicaciones(),
-            client=self.session or self.client
-        )
 
     def crear(self) -> list[str]:
         """Función dedicada a crear un producto en Shopify dada
@@ -509,33 +499,43 @@ class ProductoHandler:
         logger.info("Creando producto a partir de artículo.")
         try:
             inventory = [MinventoryLevelInput(
-                availableQuantity=(self.new_image.stock_act
-                                   - self.new_image.stock_com),
-                locationId=self.obtenerGidTienda()
+                availableQuantity=(self.cambios.stock_act
+                                   - self.cambios.stock_com),
+                locationId=self.obtener_tienda_id()
             )]
             variantInput = MproductVariantInput(
-                **self.new_image.dict(by_alias=True,
-                                      exclude_none=True),
+                **self.cambios.dict(by_alias=True, exclude_none=True),
                 inventoryQuantities=inventory)
             productInput = MproductInput(
-                **self.new_image.dict(by_alias=True,
-                                      exclude_none=True),
+                **self.cambios.dict(by_alias=True, exclude_none=True),
                 variants=[variantInput],
-                collectionsToJoin=[self.obtenerGidColeccion()]
+                collectionsToJoin=[self.obtener_coleccion_id()]
             )
-            mediaInput = obtener_CreateMediaInputs(self.new_image.imagen_url)
-            self.new_image.shopifyGID = crearProducto(
-                productInput, mediaInput,
-                self.session or self.client
+            mediaInput = generar_media_inputs(self.cambios.imagen_url)
+            self.old_image.shopify_id = shopify_crear_producto(
+                productInput, mediaInput, self.session or self.client
             )
-            self.publicar()
             # TODO: Que sucede si se publica y falla la actualización en
             # Dynamo?
-            self.actualizarGidBD()
+            self.guardar_id_dynamo()
             return ["Producto creado!"]
         except Exception:
             logger.exception("No fue posible crear el producto.")
             raise
+
+    def _publicar(self):
+        """Publica el artículo en la tienda virtual y punto de venta de
+        Shopify.
+        """
+        if self.cambios.shopify_id.get("producto"):
+            publicar_recurso(
+                GID=self.old_image.shopify_id['producto'],
+                pubIDs=self.obtener_publicaciones_id(),
+                client=self.session or self.client
+            )
+            return "Producto publicado!"
+        else:
+            return ""
 
     def _modificarInventario(self) -> str:
         """Detecta cambios de inventario que ameriten actualización en Shopify
@@ -545,18 +545,19 @@ class ProductoHandler:
             str: Cadena con información de la operación.
         """
         try:
-            delta_act = (self.cambios.stock_act - self.old_image.stock_act
-                         if self.cambios.stock_act is not None else 0)
-            delta_com = (self.cambios.stock_com - self.old_image.stock_com
-                         if self.cambios.stock_com is not None else 0)
-            delta = delta_act - delta_com
+            delta = (
+                (self.cambios.stock_act or self.old_image.stock_act
+                 - self.old_image.stock_act)
+                - (self.cambios.stock_com or self.old_image.stock_com
+                   - self.old_image.stock_com)
+            )
             if delta != 0:
-                modificarInventario(
+                shopify_cambiar_inventario(
                     delta,
                     invId=(
-                        self.old_image.shopifyGID['variante']['inventario']
+                        self.old_image.shopify_id['variante']['inventario']
                     ),
-                    locId=self.obtenerGidTienda(from_old=True),
+                    locId=self.obtener_tienda_id(),
                     client=self.session or self.client
                 )
                 return "Cambio de inventario"
@@ -578,12 +579,11 @@ class ProductoHandler:
         """
         try:
             variantInput = MproductVariantInput.parse_obj(
-                self.cambios.dict(exclude_none=True, exclude_unset=True,
-                                  by_alias=True))
-            if variantInput.dict(exclude_none=True, exclude_unset=True):
-                variantInput.id = self.old_image.shopifyGID["variante"]["id"]
-                modificarVarianteProducto(variantInput,
-                                          self.session or self.client)
+                self.cambios.dict(exclude_unset=True, by_alias=True))
+            if variantInput.dict(exclude_unset=True):
+                variantInput.id = self.old_image.shopify_id["variante"]["id"]
+                shopify_cambiar_variante(variantInput,
+                                         self.session or self.client)
                 return "Actualización de variante."
             else:
                 logger.info("La información suministrada no produjo cambios a"
@@ -607,14 +607,14 @@ class ProductoHandler:
                                   exclude_unset=True)
             )
             if self.cambios.co_lin is not None:
-                productInput.collectionsToJoin = [self.obtenerGidColeccion()]
+                productInput.collectionsToJoin = [self.obtener_coleccion_id()]
                 productInput.collectionsToLeave = [
-                    self.obtenerGidColeccion(from_old=True)
+                    self.obtener_coleccion_id(from_old=True)
                 ]
-            if productInput.dict(exclude_none=True, exclude_unset=True):
-                productInput.id = self.old_image.shopifyGID["producto"]
-                modificarProducto(productInput,
-                                  self.session or self.client)
+            if productInput.dict(exclude_unset=True):
+                productInput.id = self.old_image.shopify_id["producto"]
+                shopify_cambiar_producto(productInput,
+                                         self.session or self.client)
                 return "Actualización de producto"
             else:
                 logger.info("La información suministrada no produjo cambios al"
@@ -628,19 +628,19 @@ class ProductoHandler:
     def _cambiosImagenes(self):
         try:
             urls_anexados = list(
-                set(self.new_image.imagen_url) - set(self.old_image.imagen_url)
+                set(self.cambios.imagen_url) - set(self.old_image.imagen_url)
             )
             urls_removidos = list(
-                set(self.old_image.imagen_url) - set(self.new_image.imagen_url)
+                set(self.old_image.imagen_url) - set(self.cambios.imagen_url)
             )
             msg = ""
             if urls_anexados:
-                anexarMediaInput = obtener_CreateMediaInputs(urls_anexados)
+                anexarMediaInput = generar_media_inputs(urls_anexados)
                 logger.debug(anexarMediaInput)
                 if anexarMediaInput:
-                    self.new_image.shopifyGID['imagenes'] |= (
-                        anexarImagenArticulo(
-                            self.old_image.shopifyGID["producto"],
+                    self.old_image.shopify_id['imagenes'] |= (
+                        shopify_anexar_imagen(
+                            self.old_image.shopify_id["producto"],
                             anexarMediaInput,
                             self.session or self.client
                         )['imagenes']
@@ -649,12 +649,12 @@ class ProductoHandler:
             if urls_removidos:
                 logger.debug(urls_removidos)
                 eliminarMediaIds = [
-                    self.new_image.shopifyGID["imagenes"].pop(fname)
+                    self.old_image.shopify_id["imagenes"].pop(fname)
                     for fname in urls_removidos
                 ]
                 logger.debug(eliminarMediaIds)
-                eliminarImagenArticulo(
-                    self.new_image.shopifyGID["producto"],
+                shopify_borrar_imagen(
+                    self.old_image.shopify_id["producto"],
                     eliminarMediaIds,
                     self.session or self.client
                 )
@@ -663,7 +663,7 @@ class ProductoHandler:
                 logger.info("La información suministrada no produjo cambios a "
                             "las imágenes")
                 return "Imágenes no actualizadas."
-            self.actualizarGidBD()
+            self.guardar_id_dynamo()
             return msg
         except Exception:
             logger.exception("Hubo problemas actualizando las imágenes.")
@@ -679,6 +679,7 @@ class ProductoHandler:
         """
         try:
             respuestas = []
+            respuestas.append(self._publicar())
             respuestas.append(self._modificarInventario())
             respuestas.append(self._modificarVariante())
             respuestas.append(self._modificarProducto())
@@ -697,23 +698,8 @@ class ProductoHandler:
         """
         try:
             with self.client as self.session:
-                if self.eventName == "INSERT":
-                    respuesta = self.crear()
-                elif self.cambios.dict(exclude_none=True, exclude_unset=True):
-                    if self.new_image.shopifyGID:
-                        respuesta = self.modificar()
-                    else:
-                        logger.warning(
-                            "En el evento no se encontró el GID de "
-                            "Shopify proveniente de la base de datos. "
-                            "Se asume que el producto correspondiente "
-                            "no existe en Shopify. Se creará un "
-                            "producto nuevo con la data actualizada.")
-                        respuesta = self.crear()
-                else:
-                    logger.info("Los cambios encontrados no ameritan "
-                                "actualizaciones en Shopify.")
-                    respuesta = ["No se realizaron acciones."]
+                respuesta = super().ejecutar("Shopify",
+                                             self.old_image.shopify_id)
                 return respuesta
         except Exception:
             logger.exception("Ocurrió un problema ejecutando la acción sobre "
