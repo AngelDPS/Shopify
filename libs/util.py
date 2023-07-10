@@ -83,6 +83,7 @@ def get_parameter(key: str) -> Any:
 
 
 class ItemHandler(ABC):
+    item: str
     old_image: dict | BaseModel
     cambios: dict | BaseModel
 
@@ -105,14 +106,20 @@ class ItemHandler(ABC):
         """
         try:
             if self.cambios.dict(exclude_unset=True):
-                logger.info(f"Se aplicarán los cambios en {web_store}.")
-                if not id:
+                logger.info("Se aplicarán los cambios al "
+                            f"{self.item} en {web_store}.")
+                if not self.old_image.dict(exclude_unset=True):
                     logger.info(
-                        "En el evento no se encontró el ID de "
-                        f"{web_store} proveniente de la base de "
-                        "datos. Se asume que el articulo "
-                        f"correspondiente no existe en {web_store}."
-                        " Se creará un articulo nuevo con la data "
+                        "Al no haber OldImage en el evento, se identica como "
+                        "un INSERT y se procede a crear el "
+                        f"{self.item} en {web_store}."
+                    )
+                    respuesta = self.crear()
+                elif not id:
+                    logger.info(
+                        "En el evento, proveniente de la base de datos, no se "
+                        f"encontró el ID de {self.item} para {web_store}. "
+                        f"Se creará un {self.item} nuevo con la data "
                         "actualizada."
                     )
                     self.cambios = self.cambios.parse_obj(

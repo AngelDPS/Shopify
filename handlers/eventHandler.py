@@ -79,7 +79,7 @@ class EventHandler:
             )
             cambios = EventHandler.obtener_cambios(new_image, old_image)
             logger.debug(f'{cambios = }')
-            return new_image, old_image, cambios
+            return old_image, cambios
         except KeyError:
             logger.exception("Formato inesperado para el evento.\n"
                              "El evento debería tener los objetos\n"
@@ -94,7 +94,7 @@ class EventHandler:
             evento (dict): Evento accionado por DynamoDB.
         """
         self.event_name = evento['eventName']
-        self.new_image, self.old_image, self.cambios = (
+        self.old_image, self.cambios = (
             EventHandler.formatear_evento(evento)
         )
         self.handler_mapping = handler_mapping

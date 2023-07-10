@@ -1,6 +1,5 @@
 import json
 import boto3
-from boto3.resources.factory import SQS
 from aws_lambda_powertools import Logger
 from libs.util import obtener_codigo, get_parameter
 from os import getenv
@@ -9,7 +8,7 @@ logger = Logger(service="sqs_handler",
                 level=get_parameter("loglevel") or "WARNING")
 
 
-def _receive_messages(service_name: str) -> list[SQS.Message]:
+def _receive_messages(service_name: str) -> list:
     """Consulta los mensajes en la cola de SQS que resultaron de un error
     al manejar el evento.
 
@@ -43,11 +42,11 @@ def _receive_messages(service_name: str) -> list[SQS.Message]:
 
 class EventoEnCola:
 
-    def __init__(self, mensaje: SQS.Message = None,
+    def __init__(self, mensaje=None,
                  dynamo_data: list[dict] = None):
         if mensaje is not None:
             self.mensajes = [mensaje]
-            self.contenido = json.loads(mensaje["Body"])
+            self.contenido = json.loads(mensaje.body)
         else:
             self.mensajes = []
         if dynamo_data is not None:

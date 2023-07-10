@@ -316,6 +316,7 @@ class Habilitado(Enum):
 
 
 class ProductoHandler(ItemHandler):
+    item = "producto"
 
     def __init__(self, evento: EventHandler, client: ClienteShopify = None):
         """Constructor de la clase
@@ -348,7 +349,7 @@ class ProductoHandler(ItemHandler):
         self.client = client or ClienteShopify()
         self.session = None
 
-    def actualizar_id_dynamo(self):
+    def guardar_id_dynamo(self):
         """Actualiza el GID de Shopify para el producto usando la información
         guardada en la instancia.
         """
@@ -438,7 +439,7 @@ class ProductoHandler(ItemHandler):
         except IndexError:
             pass
         except UnboundLocalError:
-            logger.wawrning(
+            logger.warning(
                 f"El código de línea '{co_lin}' no parece existir en la base "
                 f"de datos para la tienda {codigo_tienda}. No se harán "
                 "cambios con la colección asociada en Shopify."

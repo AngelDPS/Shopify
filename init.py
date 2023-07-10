@@ -9,7 +9,7 @@ from typing import Any, Dict, List
 logger = Logger(service="shopify",
                 level=get_parameter("loglevel") or "WARNING")
 
-environ["ENV"] = "local"
+# environ["ENV"] = "local"
 if getenv("ENV") == "local":
     environ["NOMBRE_COMPANIA"] = "generico2022"
     environ["AWS_REGION"] = "us-east-2"
