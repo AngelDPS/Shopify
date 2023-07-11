@@ -184,7 +184,7 @@ class ColeccionHandler(ItemHandler):
 
     def modificar(self) -> list[dict]:
         self.old_image.shopify_id = (
-            self.old_image.shopify_id or self.cambios.shopify_id
+            self.cambios.shopify_id or self.old_image.shopify_id
         )
         r = []
         try:
@@ -216,8 +216,8 @@ class ColeccionHandler(ItemHandler):
                     except IndexError:
                         pass
                 respuesta = super().ejecutar("Shopify",
-                                             self.old_image.shopify_id
-                                             or self.cambios.shopify_id)
+                                             self.cambios.shopify_id
+                                             or self.old_image.shopify_id)
                 return respuesta
         except Exception:
             logger.exception("Ocurrió un problema ejecutando la acción sobre "

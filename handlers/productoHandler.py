@@ -340,9 +340,9 @@ class ProductoHandler(ItemHandler):
 
         self.old_image = evento.old_image
         if self.old_image:
-            self.old_image['precio'] = self.old_image[campo_precio]
+            self.old_image['precio'] = self.old_image.get(campo_precio)
             self.old_image['habilitado'] = Habilitado(
-                self.old_image['habilitado']
+                self.old_image.get('habilitado', 0)
             ).name.upper()
         self.old_image = MArticulo.parse_obj(self.old_image)
 
@@ -683,8 +683,8 @@ class ProductoHandler(ItemHandler):
             list[str]: Conjunto de las respuestas de los métodos de
             modificación.
         """
-        self.old_image.shopify_id = (self.old_image.shopify_id
-                                     or self.cambios.shopify_id)
+        self.old_image.shopify_id = (self.cambios.shopify_id
+                                     or self.old_image.shopify_id)
         try:
             respuestas = []
             respuestas.append(self._publicar())
@@ -707,8 +707,8 @@ class ProductoHandler(ItemHandler):
         try:
             with self.client as self.session:
                 respuesta = super().ejecutar("Shopify",
-                                             self.old_image.shopify_id
-                                             or self.cambios.shopify_id)
+                                             self.cambios.shopify_id
+                                             or self.old_image.shopify_id)
                 return respuesta
         except Exception:
             logger.exception("Ocurrió un problema ejecutando la acción sobre "
