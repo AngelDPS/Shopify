@@ -1,4 +1,3 @@
-from logging import getLogger
 from models.producto import (
     MproductInput,
     MproductVariantInput,
@@ -29,8 +28,9 @@ from libs.conexion import (
 )
 from enum import Enum
 import boto3
+from aws_lambda_powertools import Logger
 
-logger = getLogger("shopify.productoHandler")
+logger = Logger(child=True, service="shopify")
 
 
 def shopify_crear_producto(productInput: MproductInput,
@@ -429,7 +429,10 @@ class ProductoHandler(ItemHandler):
             logger.warning("No se encontró el GID de la linea en la base "
                            "de datos. Se procederá a consultar el GID a "
                            "Shopify y a guardar el resultado obtenido.")
-            coleccion = ColeccionHandler.desde_linea(linea)
+            coleccion = ColeccionHandler.desde_linea(
+                linea,
+                self.session or self.client
+            )
             coleccion.old_image.shopify_id = (
                 obtener_coleccion_id(linea['nombre'],
                                      self.session or self.client)
@@ -530,7 +533,7 @@ class ProductoHandler(ItemHandler):
         """
         if self.cambios.shopify_id.get("producto"):
             publicar_recurso(
-                GID=self.old_image.shopify_id['producto'],
+                GID=self.cambios.shopify_id['producto'],
                 pubIDs=self.obtener_publicaciones_id(),
                 client=self.session or self.client
             )
@@ -629,10 +632,12 @@ class ProductoHandler(ItemHandler):
     def _cambiosImagenes(self):
         try:
             urls_anexados = list(
-                set(self.cambios.imagen_url) - set(self.old_image.imagen_url)
+                set(self.cambios.imagen_url or self.old_image.imagen_url)
+                - set(self.old_image.imagen_url)
             )
             urls_removidos = list(
-                set(self.old_image.imagen_url) - set(self.cambios.imagen_url)
+                set(self.old_image.imagen_url)
+                - set(self.cambios.imagen_url or self.old_image.imagen_url)
             )
             msg = ""
             if urls_anexados:
@@ -678,6 +683,8 @@ class ProductoHandler(ItemHandler):
             list[str]: Conjunto de las respuestas de los métodos de
             modificación.
         """
+        self.old_image.shopify_id = (self.old_image.shopify_id
+                                     or self.cambios.shopify_id)
         try:
             respuestas = []
             respuestas.append(self._publicar())
@@ -700,7 +707,8 @@ class ProductoHandler(ItemHandler):
         try:
             with self.client as self.session:
                 respuesta = super().ejecutar("Shopify",
-                                             self.old_image.shopify_id)
+                                             self.old_image.shopify_id
+                                             or self.cambios.shopify_id)
                 return respuesta
         except Exception:
             logger.exception("Ocurrió un problema ejecutando la acción sobre "

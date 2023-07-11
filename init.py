@@ -9,11 +9,6 @@ from typing import Any, Dict, List
 logger = Logger(service="shopify",
                 level=get_parameter("loglevel") or "WARNING")
 
-# environ["ENV"] = "local"
-if getenv("ENV") == "local":
-    environ["NOMBRE_COMPANIA"] = "generico2022"
-    environ["AWS_REGION"] = "us-east-2"
-
 
 @logger.inject_lambda_context(log_event=True)
 def lambda_handler(event: List[dict], context: Any) -> List[Dict[str, str]]:
@@ -33,6 +28,11 @@ def lambda_handler(event: List[dict], context: Any) -> List[Dict[str, str]]:
         list[dict[str, str]]: Lista de diccionarios con los mensajes
         retornados por cada evento procesado.
     """
+    # environ["ENV"] = "local"
+    if getenv("ENV") == "local":
+        environ["NOMBRE_COMPANIA"] = "generico2022"
+        environ["AWS_REGION"] = "us-east-2"
+
     handler_mapping = {
                 'articulos': ProductoHandler,
                 'lineas': ColeccionHandler

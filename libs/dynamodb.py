@@ -1,9 +1,9 @@
 import boto3
 from botocore.exceptions import ClientError
 from os import getenv
-from logging import getLogger
+from aws_lambda_powertools import Logger
 
-logger = getLogger("shopify.dynamodb")
+logger = Logger(child=True)
 
 
 def obtener_tabla():

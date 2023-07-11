@@ -1,11 +1,11 @@
-from logging import getLogger
 from gql import Client, gql
 from gql.client import SyncClientSession
 from gql.transport.async_transport import AsyncTransport
 from gql.transport.requests import RequestsHTTPTransport
 from libs.util import get_parameter
+from aws_lambda_powertools import Logger
 
-logger = getLogger("shopify.conexion")
+logger = Logger(child=True, service="shopify")
 
 
 class ClienteShopify(Client):
@@ -26,12 +26,10 @@ class ClienteShopify(Client):
 
     def execute(self, request_str, variables=None, operacion=None,
                 **kwargs) -> dict:
-        logger.debug(f'{variables = }')
-        respuesta = super().execute(gql(request_str),
+        respuesta = super().execute(request_str,
                                     variable_values=variables,
                                     operation_name=operacion,
                                     **kwargs)
-        logger.debug(f"{respuesta = }")
         if respuesta[list(respuesta)[0]].get("userErrors"):
             msg = ("No fue posible realizar la operación:\n"
                    f"{respuesta[list(respuesta)[0]]['userErrors']}")

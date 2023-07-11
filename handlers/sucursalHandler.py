@@ -1,9 +1,9 @@
-from logging import getLogger
 from libs.conexion import ClienteShopify
 # from models.sucursal import MsucursalInput
 # import re
+from aws_lambda_powertools import Logger
 
-logger = getLogger("shopify.sucursal")
+logger = Logger(child=True, service="shopify")
 
 
 def shopify_obtener_id(nombre: str, client: ClienteShopify = None) -> str:

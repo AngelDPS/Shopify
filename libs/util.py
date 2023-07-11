@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from typing import Any
 from aws_lambda_powertools import Logger
 
-logger = Logger(service="utilities", level="WARNING")
+logger = Logger(service="utilities")
 
 
 def obtener_codigo(evento: list[dict]) -> str | None:

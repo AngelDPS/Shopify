@@ -1,4 +1,3 @@
-import logging
 from models.evento import Mlinea
 from models.coleccion import McollectionInput
 from re import search
@@ -13,8 +12,9 @@ from libs.conexion import (
     publicar_recurso
 )
 from libs.util import ItemHandler
+from aws_lambda_powertools import Logger
 
-logger = logging.getLogger("shopify.coleccionHandler")
+logger = Logger(child=True, service="shopify")
 
 
 def shopify_obtener_id(nombre: str, client: ClienteShopify = None) -> str:
@@ -96,15 +96,15 @@ class ColeccionHandler(ItemHandler):
     @classmethod
     def desde_linea(cls, linea: dict, client: ClienteShopify = None):
         evento = type("evento", (), {
-            "old_image": linea,
-            "cambios": {}
+            "cambios": linea,
+            "old_image": {}
         })
         return cls(evento, client)
 
     def guardar_id_dynamo(self):
         logger.debug(f"GID de línea: {self.old_image.shopify_id}")
         guardar_linea_id(
-            PK=self.cambios_image.PK or self.old_image.PK,
+            PK=self.cambios.PK or self.old_image.PK,
             SK=self.cambios.SK or self.old_image.SK,
             GID=self.old_image.shopify_id
         )
@@ -156,6 +156,7 @@ class ColeccionHandler(ItemHandler):
             collectionInput = McollectionInput.parse_obj(
                 self.cambios.dict(by_alias=True, exclude_none=True)
             )
+            logger.debug(collectionInput)
             self.old_image.shopify_id = shopify_crear_coleccion(
                 collectionInput,
                 self.session or self.client
@@ -182,6 +183,9 @@ class ColeccionHandler(ItemHandler):
             return ""
 
     def modificar(self) -> list[dict]:
+        self.old_image.shopify_id = (
+            self.old_image.shopify_id or self.cambios.shopify_id
+        )
         r = []
         try:
             r.append(self._publicar())
@@ -212,7 +216,8 @@ class ColeccionHandler(ItemHandler):
                     except IndexError:
                         pass
                 respuesta = super().ejecutar("Shopify",
-                                             self.old_image.shopify_id)
+                                             self.old_image.shopify_id
+                                             or self.cambios.shopify_id)
                 return respuesta
         except Exception:
             logger.exception("Ocurrió un problema ejecutando la acción sobre "
