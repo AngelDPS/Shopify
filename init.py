@@ -31,28 +31,11 @@ def lambda_handler(event: List[dict], context: Any) -> List[Dict[str, str]]:
     if getenv("AWS_EXECUTION_ENV") is None:
         environ["NOMBRE_COMPANIA"] = "generico2022"
         environ["AWS_REGION"] = "us-east-2"
-        environ["SQSERROR_URL"] = "https://sqs.us-east-2.amazonaws.com/276507440195/generico2022-Dev-SQSShopifyError.fifo"
+        environ["SQSERROR_URL"] = (
+            "https://sqs.us-east-2.amazonaws.com/"
+            + "276507440195/generico2022-Dev-SQSShopifyError.fifo"
+        )
         environ["AWS_PROFILE_NAME"] = "generico2022-Dev"
-
-    # --> Se desactiva la validación de los campos ya que se hace previo a la ejecución de este escript
-    # filtro_campos = [
-    #     "prec_vta1", "prec_vta2", "prec_vta3", "PK", "SK", "habilitado",
-    #     "art_des", "codigoCompania", "codigoTienda", "co_art", "co_lin",
-    #     "stock_act", "stock_com", "codigo_barra", "referencia", "marca",
-    #     "imagen_url", "modelo"
-    # ]
-
-    # if event[0].get("eventName") == "INSERT":
-    #     for key in filtro_campos:
-    #         if key not in event[0]["dynamodb"]["NewImage"]:
-    #             raise ValueError("El evento no contiene el campo " + key)
-    # elif event[0].get("eventName") == "MODIFY":
-    #     for key in filtro_campos:
-    #         if (key not in event[0]["dynamodb"]["NewImage"]
-    #                 or key not in event[0]["dynamodb"]["OldImage"]):
-    #             raise ValueError("El evento no contiene el campo " + key)
-    # else:
-    #     raise ValueError("El evento no es válido")
 
     handler_mapping = {
         'articulos': ProductoHandler,

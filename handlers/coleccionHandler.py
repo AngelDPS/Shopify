@@ -172,7 +172,7 @@ class ColeccionHandler(ItemHandler):
         """Publica el artículo en la tienda virtual y punto de venta de
         Shopify.
         """
-        if self.cambios.shopify_id.get("producto"):
+        if self.cambios.shopify_id:
             publicar_recurso(
                 GID=self.old_image.shopify_id,
                 pubIDs=self.obtener_publicaciones_id(),
