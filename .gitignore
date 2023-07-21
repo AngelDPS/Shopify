@@ -8,3 +8,5 @@ logs*
 dynamodb_output.json
 cargar_articulos_dynamo.py
 *.ipynb*
+*.json
+ejecutar_evento.py
