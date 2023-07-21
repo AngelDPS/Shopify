@@ -20,8 +20,6 @@ class BaseModel(PydanticBaseModel):
 
 
 class MinventoryLevelInput(BaseModel):
-    # TODO: Corrección para permitir que el inventario tenga valores negativos
-    # Línea anterior: availableQuantity: NonNegativeInt = Field(
     availableQuantity: int = Field(
         ...,
         alias='stock_act'
@@ -61,7 +59,7 @@ class MproductVariantInput(BaseModel):
 
 class MproductInput(BaseModel):
     title: str | None = Field(None, alias='art_des')
-    descriptionHtml: str | None = Field(None, alias='des_shopify')
+    descriptionHtml: str | None = Field(None, alias='shopify_des')
     productType: str | None = None
     status: ProductStatus | None = Field(None, alias='habilitado')
     collectionsToJoin: list[str] | None = None

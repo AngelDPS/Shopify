@@ -1,5 +1,6 @@
-# from aws_lambda_powertools.utilities import parameters
-# from os import getenv
+import os
+from aws_lambda_powertools.utilities import parameters
+from os import getenv
 from abc import ABC, abstractmethod
 from pydantic import BaseModel
 from typing import Any
@@ -46,44 +47,47 @@ def get_parameter(key: str) -> Any:
     Returns:
         Any: Valor obtenido del json almacenado en el parámetro.
     """
-    # try:
-    #     parameter = f"/akia9/akiastock/{getenv('NOMBRE_COMPANIA')}"
-    #     return parameters.get_parameter(parameter, transform="json",
-    #                                     max_age=300).get(key)
-    # except Exception:
-    #     logger.exception(
-    #         f"Ocurrión un error obteniendo el valor de '{key}' del "
-    #         f"parámetro '{parameter}'.")
-    #     raise
-    params = {
-        "region": "us-east-2",
-        "database": "akiastock_generico2022",
-        "dbusername": "admin",
-        "dbpassword": "Macaveo28!",
-        "dbhost": "bisalud-database-rds.cpdpaoh0epx0.us-east-2.rds.amazonaws.com",
-        "userpoolid": "us-east-2_2D1N9OQnY",
-        "appclientadmin": "38npvd6jh1frluu1920h2qcdpm",
-        "appclientuser": "4hoomirg2c72a8lah8jv8o5dlh",
-        "monedasistema": "DOLAR",
-        "campoprecio": "prec_vta2",
-        "loglevel": "DEBUG",
-        "loggername": "GENERICO_LOGGER",
-        "bucketname": "angelbucket-test",
-        "bucketmaxsize": "1000",
-        "features": ["pedidos", "inventario", "imagenes", "etiquetas"],
-        "opensearchserver": "https://search-akia9-akiastock1-by25omxy2tszfroocxcjgygqpu.us-east-2.es.amazonaws.com",
-        "opensearchuser": "generico2022user",
-        "opensearchpassword": "r8Akia765.!",
-        "dynamodb": "generico2022-db",
-        "crear_pedido_tercero": "PREPARADO",
-        "SHOPIFY_ACCESS_TOKEN": "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",
-        "SHOPIFY_SHOP": "2f64b9",
-        "SHOPIFY_SQSURL": "https://sqs.us-east-2.amazonaws.com/099375320271/AngelQueue.fifo",
-        "SHOPIFY_PRECIO": "prec_vta1",
-        "MELI_PRECIO": "prec_vta2",
-        "MELI_SQSURL": "https://sqs.us-east-2.amazonaws.com/099375320271/AngelQueue.fifo"
-    }
-    return params.get(key)
+    if os.environ.get("AWS_EXECUTION_ENV") is None:
+        params = {
+            "region": "us-east-2",
+            "database": "akiastock_generico2022",
+            "dbusername": "admin",
+            "dbpassword": "Macaveo28!",
+            "dbhost": "bisalud-database-rds.cpdpaoh0epx0.us-east-2.rds.amazonaws.com",
+            "userpoolid": "us-east-2_2D1N9OQnY",
+            "appclientadmin": "38npvd6jh1frluu1920h2qcdpm",
+            "appclientuser": "4hoomirg2c72a8lah8jv8o5dlh",
+            "monedasistema": "DOLAR",
+            "campoprecio": "prec_vta2",
+            "loglevel": "DEBUG",
+            "loggername": "GENERICO_LOGGER",
+            "bucketname": "angelbucket-test",
+            "bucketmaxsize": "1000",
+            "features": ["pedidos", "inventario", "imagenes", "etiquetas"],
+            "opensearchserver": "https://search-akia9-akiastock1-by25omxy2tszfroocxcjgygqpu.us-east-2.es.amazonaws.com",
+            "opensearchuser": "generico2022user",
+            "opensearchpassword": "r8Akia765.!",
+            "dynamodb": "generico2022-db",
+            "crear_pedido_tercero": "PREPARADO",
+            "SHOPIFY_ACCESS_TOKEN": "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",
+            "SHOPIFY_SHOP": "2f64b9",
+            "SHOPIFY_SQSURL": "https://sqs.us-east-2.amazonaws.com/276507440195/generico2022-Dev-SQSShopifyError.fifo",
+            "SHOPIFY_PRECIO": "prec_vta1",
+            "MELI_PRECIO": "prec_vta2",
+            "MELI_SQSURL": "https://sqs.us-east-2.amazonaws.com/099375320271/AngelQueue.fifo"
+        }
+        return params.get(key)
+    else:
+        try:
+            parameter = f"/akia9/akiastock/{getenv('NOMBRE_COMPANIA')}"
+            return parameters.get_parameter(parameter, transform="json",
+                                            max_age=300).get(key)
+        except Exception:
+            logger.exception(
+                f"Ocurrión un error obteniendo el valor de '{key}' del "
+                f"parámetro '{parameter}'.")
+            raise
+
 
 
 class ItemHandler(ABC):

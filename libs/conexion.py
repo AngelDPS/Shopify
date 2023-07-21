@@ -24,36 +24,6 @@ class ClienteShopify(Client):
         )
         super().__init__(transport=transport)
 
-    def execute(self, request_str, variables=None, operacion=None,
-                **kwargs) -> dict:
-        respuesta = super().execute(request_str,
-                                    variable_values=variables,
-                                    operation_name=operacion,
-                                    **kwargs)
-        if respuesta[list(respuesta)[0]].get("userErrors"):
-            msg = ("No fue posible realizar la operación:\n"
-                   f"{respuesta[list(respuesta)[0]]['userErrors']}")
-            logger.exception(msg)
-            raise RuntimeError(msg)
-        return respuesta
-        # except TransportQueryError as err:
-        #     logger.exception(
-        #         "Hubo un problema con la consulta, "
-        #         f"el servidor retornó un error {err}."
-        #     )
-        #     raise
-        # except TransportServerError as err:
-        #     logger.exception(
-        #         "Hubo un problema con el servidor, "
-        #         f"retornó un código {err.code}"
-        #     )
-        #     raise
-        # except Exception as err:
-        #     logger.exception(
-        #         f"Se encontró un error inesperado.\n{type(err)}\n{err}"
-        #     )
-        #     raise
-
     def connect_sync(self):
         r"""Connect synchronously with the underlying sync transport to
         produce a session.

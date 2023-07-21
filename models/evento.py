@@ -30,7 +30,7 @@ class Marticulo(BaseModel):
 
 class MArticuloShopify(Marticulo):
     cobra_impuesto: bool = Field(False, alias='taxable')
-    shopify_des: str | None = None
+    shopify_des: str | None = Field(None, alias='descriptionHtml')
     shopify_id: dict | None = {}
 
 

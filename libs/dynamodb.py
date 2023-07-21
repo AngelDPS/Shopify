@@ -7,8 +7,8 @@ logger = Logger(child=True)
 
 
 def obtener_tabla():
-    if getenv('ENV') == 'local':
-        session = boto3.Session(profile_name='angel')
+    if getenv("AWS_EXECUTION_ENV") is None:
+        session = boto3.Session(profile_name=getenv("AWS_PROFILE"))
     else:
         session = boto3
     return (

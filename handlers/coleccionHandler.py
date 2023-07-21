@@ -172,7 +172,7 @@ class ColeccionHandler(ItemHandler):
         """Publica el artículo en la tienda virtual y punto de venta de
         Shopify.
         """
-        if self.cambios.shopify_id.get("producto"):
+        if self.cambios.shopify_id:
             publicar_recurso(
                 GID=self.old_image.shopify_id,
                 pubIDs=self.obtener_publicaciones_id(),
@@ -184,7 +184,7 @@ class ColeccionHandler(ItemHandler):
 
     def modificar(self) -> list[dict]:
         self.old_image.shopify_id = (
-            self.old_image.shopify_id or self.cambios.shopify_id
+            self.cambios.shopify_id or self.old_image.shopify_id
         )
         r = []
         try:
@@ -216,8 +216,8 @@ class ColeccionHandler(ItemHandler):
                     except IndexError:
                         pass
                 respuesta = super().ejecutar("Shopify",
-                                             self.old_image.shopify_id
-                                             or self.cambios.shopify_id)
+                                             self.cambios.shopify_id
+                                             or self.old_image.shopify_id)
                 return respuesta
         except Exception:
             logger.exception("Ocurrió un problema ejecutando la acción sobre "
