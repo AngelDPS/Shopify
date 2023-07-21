@@ -138,8 +138,12 @@ class EventHandler:
 
 def procesar_todo(service_name: str, evento: list[dict],
                   handler_mapping: dict[str, ItemHandler]):
+    try:
+        records = evento["Records"]
+    except KeyError:
+        records = evento
     eventos_en_cola = obtener_eventos_en_cola(service_name=service_name,
-                                              evento_nuevo=evento)
+                                              evento_nuevo=records)
     r = []
 
     logger.info("Eventos para procesar: "
