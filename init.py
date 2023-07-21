@@ -1,13 +1,11 @@
 from os import environ, getenv
-from libs.util import get_parameter
 from handlers.eventHandler import procesar_todo
 from handlers.productoHandler import ProductoHandler
 from handlers.coleccionHandler import ColeccionHandler
 from aws_lambda_powertools import Logger
 from typing import Any, Dict, List
 
-logger = Logger(service="shopify",
-                level=get_parameter("loglevel") or "WARNING")
+logger = Logger(service="shopify")
 
 
 @logger.inject_lambda_context(log_event=True)

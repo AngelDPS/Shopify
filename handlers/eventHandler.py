@@ -1,10 +1,9 @@
 from boto3.dynamodb.types import TypeDeserializer
-from libs.util import ItemHandler, get_parameter
-from handlers.sqsHandler import obtener_eventos_en_cola
+from libs.util import ItemHandler
+from handlers.sqsHandler import obtener_eventos_en_cola, EventoEnCola
 from aws_lambda_powertools import Logger
 
-logger = Logger(service="event_handler",
-                level=get_parameter("loglevel") or "WARNING")
+logger = Logger(service="event_handler")
 
 
 class EventHandler:
@@ -144,6 +143,7 @@ def procesar_todo(service_name: str, evento: list[dict],
         records = evento
     eventos_en_cola = obtener_eventos_en_cola(service_name=service_name,
                                               evento_nuevo=records)
+    # eventos_en_cola = [EventoEnCola(dynamo_data=records)]
     r = []
 
     logger.info("Eventos para procesar: "

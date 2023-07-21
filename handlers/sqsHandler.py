@@ -2,11 +2,9 @@ import json
 import os
 import boto3
 from aws_lambda_powertools import Logger
-from libs.util import obtener_codigo, get_parameter
-from os import getenv
+from libs.util import obtener_codigo
 
-logger = Logger(service="sqs_handler",
-                level=get_parameter("loglevel") or "WARNING")
+logger = Logger(service="sqs_handler")
 
 
 def _receive_messages(service_name: str) -> list:
@@ -16,9 +14,7 @@ def _receive_messages(service_name: str) -> list:
     Returns:
         list[dict]: Lista con todos los mensajes en cola en SQS.
     """
-    #param_key = f"{service_name.upper()}_SQSURL"
-    #sqs_url = get_parameter(param_key)
-    sqs_url = os.environ.get("SQSERROR_URL")
+    sqs_url = os.getenv("SQSERROR_URL")
     if sqs_url is None:
         raise ValueError(
             f"""No se encontró el valor para {sqs_url} en el parámetro
@@ -26,7 +22,7 @@ def _receive_messages(service_name: str) -> list:
             Asegúrese que el parámetro esté configurado correctamente.
             """
         )
-    if os.environ.get("AWS_EXECUTION_ENV") is None:
+    if os.getenv("AWS_EXECUTION_ENV") is None:
         session = boto3.Session(profile_name='generic-dev')
     else:
         session = boto3
