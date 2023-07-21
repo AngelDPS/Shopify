@@ -1,4 +1,3 @@
-import os
 import boto3
 from botocore.exceptions import ClientError
 from os import getenv
@@ -8,8 +7,8 @@ logger = Logger(child=True)
 
 
 def obtener_tabla():
-    if os.environ.get("AWS_EXECUTION_ENV") is None:
-        session = boto3.Session(profile_name='generic-dev')
+    if getenv("AWS_EXECUTION_ENV") is None:
+        session = boto3.Session(profile_name=getenv("AWS_PROFILE"))
     else:
         session = boto3
     return (

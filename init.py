@@ -28,11 +28,11 @@ def lambda_handler(event: List[dict], context: Any) -> List[Dict[str, str]]:
         list[dict[str, str]]: Lista de diccionarios con los mensajes
         retornados por cada evento procesado.
     """
-    # environ["ENV"] = "local"
-    if getenv("ENV") == "local":
+    if getenv("AWS_EXECUTION_ENV") is None:
         environ["NOMBRE_COMPANIA"] = "generico2022"
         environ["AWS_REGION"] = "us-east-2"
         environ["SQSERROR_URL"] = "https://sqs.us-east-2.amazonaws.com/276507440195/generico2022-Dev-SQSShopifyError.fifo"
+        environ["AWS_PROFILE_NAME"] = "generico2022-Dev"
 
     # --> Se desactiva la validación de los campos ya que se hace previo a la ejecución de este escript
     # filtro_campos = [
