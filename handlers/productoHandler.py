@@ -325,29 +325,45 @@ class ProductoHandler(ItemHandler):
             evento (EventHandler):
             client (ClienteShopify, optional): Defaults to None.
         """
-        campo_precio = get_parameter('SHOPIFY_PRECIO')
+        if not (evento.old_image.get('shopify_habilitado') or
+                evento.cambios.get('shopify_habilitado')):
+            logger.info(
+                """El articulo no está habilitado para MercadoLibre y será
+                ignorado.
+                Para cambiar esto, establezca el registro meli.habilitado
+                con el valor '1'."""
+            )
+            self.procesar = False
+        else:
+            self.procesar = True
+            campo_precio = get_parameter('SHOPIFY_PRECIO')
 
-        self.cambios = evento.cambios
-        self.cambios.get('shopify_id', {}).pop('imagenes', None)
-        self.cambios.get('shopify_id', {}).pop('variante', None)
-        if campo_precio in self.cambios:
-            self.cambios['precio'] = self.cambios[campo_precio]
-        if 'habilitado' in self.cambios:
-            self.cambios['habilitado'] = Habilitado(
-                self.cambios['habilitado']
-            ).name.upper()
-        self.cambios = MArticulo.parse_obj(self.cambios)
+            self.cambios = evento.cambios
+            self.cambios.get('shopify_id', {}).pop('imagenes', None)
+            self.cambios.get('shopify_id', {}).pop('variante', None)
+            if campo_precio in self.cambios:
+                self.cambios['precio'] = self.cambios[campo_precio]
+            if ('habilitado' in self.cambios
+                    or 'shopify_habilitado' in self.cambios):
+                self.cambios['habilitado'] = Habilitado(
+                    self.cambios.get('habilitado',
+                                     evento.old_image.get('habilitado')) and
+                    self.cambios.get('shopify_habilitado',
+                                     evento.old_image.get('shopify_habilitado')
+                                     )
+                ).name.upper()
+            self.cambios = MArticulo.parse_obj(self.cambios)
 
-        self.old_image = evento.old_image
-        if self.old_image:
-            self.old_image['precio'] = self.old_image.get(campo_precio)
-            self.old_image['habilitado'] = Habilitado(
-                self.old_image.get('habilitado', 0)
-            ).name.upper()
-        self.old_image = MArticulo.parse_obj(self.old_image)
+            self.old_image = evento.old_image
+            if self.old_image:
+                self.old_image['precio'] = self.old_image.get(campo_precio)
+                self.old_image['habilitado'] = Habilitado(
+                    self.old_image.get('habilitado', 0)
+                ).name.upper()
+            self.old_image = MArticulo.parse_obj(self.old_image)
 
-        self.client = client or ClienteShopify()
-        self.session = None
+            self.client = client or ClienteShopify()
+            self.session = None
 
     def guardar_id_dynamo(self):
         """Actualiza el GID de Shopify para el producto usando la información
@@ -704,13 +720,23 @@ class ProductoHandler(ItemHandler):
             list[str]: Conjunto de resultados obtenidos por las operaciones
             ejecutadas.
         """
-        try:
-            with self.client as self.session:
-                respuesta = super().ejecutar("Shopify",
-                                             self.cambios.shopify_id
-                                             or self.old_image.shopify_id)
-                return respuesta
-        except Exception:
-            logger.exception("Ocurrió un problema ejecutando la acción sobre "
-                             "el producto.")
-            raise
+        if self.procesar:
+            try:
+                with self.client as self.session:
+                    respuesta = super().ejecutar("Shopify",
+                                                 self.cambios.shopify_id
+                                                 or self.old_image.shopify_id)
+                    return respuesta
+            except Exception:
+                logger.exception(
+                    "Ocurrió un problema ejecutando la acción sobre el "
+                    "producto."
+                )
+                raise
+        else:
+            logger.info(
+                "El artículo no está habilitado para procesarse en Shopify."
+            )
+            return [
+                "El artículo no está habilitado para procesarse en Shopify."
+            ]
