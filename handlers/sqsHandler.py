@@ -44,7 +44,10 @@ class EventoEnCola:
                  dynamo_data: list[dict] = None):
         if mensaje is not None:
             self.mensajes = [mensaje]
-            self.contenido = json.loads(mensaje.body)
+            try:
+                self.contenido = json.loads(mensaje.body)[0]
+            except KeyError:
+                self.contenido = json.loads(mensaje.body)["Records"][0]
         else:
             self.mensajes = []
         if dynamo_data is not None:
@@ -68,7 +71,7 @@ class EventoEnCola:
     def borrar_de_cola(self, only_last: bool = False):
         if self.mensajes:
             if only_last:
-                self.mensajes.pop.delete()
+                self.mensajes.pop().delete()
             else:
                 [mensaje.delete() for mensaje in self.mensajes]
 
@@ -78,8 +81,8 @@ class EventoEnCola:
                 logger.info("El evento ya se había repetido, "
                             "se eliminará el mensaje repetido anterior.")
                 self.borrar_de_cola(only_last=True)
-            self.contenido[0]["dynamodb"]["NewImage"] = (
-                other.contenido[0]["dynamodb"]["NewImage"]
+            self.contenido["dynamodb"]["NewImage"] = (
+                other.contenido["dynamodb"]["NewImage"]
             )
             self.mensajes.extend(other.mensajes)
 

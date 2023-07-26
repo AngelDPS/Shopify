@@ -56,5 +56,6 @@ class Mtienda(BaseModel):
     codigoCompania: str | None = None
     codigoTienda: str | None = None
     codigoTiendaAlt: str | None = None
+    shopify_id: str | None = None
     # configuraciones:
     # correo

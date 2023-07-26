@@ -21,9 +21,11 @@ def obtener_codigo(evento: list[dict]) -> str | None:
         str | None: Código  único del ítem de DynamoDB para la entidad.
     """
     try:
-        record = evento[0]["dynamodb"]["NewImage"]
-    except IndexError:
+        record = evento["dynamodb"]["NewImage"]
+    except KeyError:
         record = evento["Records"][0]["dynamodb"]["NewImage"]
+    except IndexError:
+        record = evento[0]["dynamodb"]["NewImage"]
     match record["entity"]["S"]:
         case "articulos":
             return record["co_art"]["S"]

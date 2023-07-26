@@ -40,7 +40,7 @@ def shopify_obtener_id(nombre: str, client: ClienteShopify = None) -> str:
         raise
 
 
-def shopify_crear_coleccion(collectionInput: McollectionInput,
+def shopify_crear_coleccion(collection_input: McollectionInput,
                             client: ClienteShopify = None) -> str:
     try:
         client = client or ClienteShopify()
@@ -58,7 +58,7 @@ def shopify_crear_coleccion(collectionInput: McollectionInput,
             }
             """,
             variables={
-                'input': collectionInput.dict(exclude_none=True)
+                'input': collection_input.dict(exclude_none=True)
             }
         )["collectionCreate"]["collection"]["id"]
     except Exception:
@@ -66,7 +66,7 @@ def shopify_crear_coleccion(collectionInput: McollectionInput,
         raise
 
 
-def modificarColeccion(collectionInput: McollectionInput,
+def modificarColeccion(collection_input: McollectionInput,
                        client: ClienteShopify = None):
     client = client or ClienteShopify()
     client.execute(
@@ -79,8 +79,8 @@ def modificarColeccion(collectionInput: McollectionInput,
             }
         }
         """,
-        variables={'input': collectionInput.dict(exclude_none=True,
-                                                 exclude_unset=True)},
+        variables={'input': collection_input.dict(exclude_none=True,
+                                                  exclude_unset=True)},
     )
 
 
@@ -153,12 +153,12 @@ class ColeccionHandler(ItemHandler):
         logger.info("Creando colección a partir de línea.")
 
         try:
-            collectionInput = McollectionInput.parse_obj(
+            collection_input = McollectionInput.parse_obj(
                 self.cambios.dict(by_alias=True, exclude_none=True)
             )
-            logger.debug(collectionInput)
+            logger.debug(collection_input)
             self.old_image.shopify_id = shopify_crear_coleccion(
-                collectionInput,
+                collection_input,
                 self.session or self.client
             )
             self.guardar_id_dynamo()
@@ -189,13 +189,13 @@ class ColeccionHandler(ItemHandler):
         r = []
         try:
             r.append(self._publicar())
-            collectionInput = McollectionInput.parse_obj(
+            collection_input = McollectionInput.parse_obj(
                 self.cambios.dict(by_alias=True, exclude_none=True,
                                   exclude_unset=True)
             )
-            if collectionInput.dict(exclude_unset=True):
-                collectionInput.id = self.old_image.shopify_id
-                modificarColeccion(collectionInput,
+            if collection_input.dict(exclude_unset=True):
+                collection_input.id = self.old_image.shopify_id
+                modificarColeccion(collection_input,
                                    self.session or self.client)
                 r.append("Coleccion modificada exitosamente.")
             return r

@@ -11,7 +11,8 @@ from handlers.coleccionHandler import (
     shopify_obtener_id as obtener_coleccion_id
 )
 from handlers.sucursalHandler import (
-    shopify_obtener_id as obtener_sucursal_id
+    shopify_obtener_id as obtener_sucursal_id,
+    SucursalHandler
 )
 from libs.dynamodb import (
     guardar_articulo_id,
@@ -408,9 +409,19 @@ class ProductoHandler(ItemHandler):
             guardar_tienda_id(codigo_compania, codigo_tienda,
                               GID=tienda['shopify_id']['sucursal'])
             return tienda['shopify_id']['sucursal']
-        except UnboundLocalError:
-            raise ValueError(f"El código de tienda '{codigo_tienda}' no parece"
-                             " existir en la base de datos.")
+        except (UnboundLocalError, IndexError):
+            logger.warning(
+                "No se encontró ningún registro de tienda en Shopify. "
+                "Se procederá a crear la sucursal en Shopify y a guardar "
+                "el GID resultante."
+            )
+        try:
+            sucursal = SucursalHandler.desde_tienda(
+                tienda,
+                self.session or self.client
+            )
+            sucursal.crear()
+            return sucursal.old_image.shopify_id
         except Exception:
             logger.exception("No se pudo obtener el GID de la tienda.")
             raise
