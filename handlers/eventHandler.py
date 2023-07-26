@@ -1,6 +1,6 @@
 from boto3.dynamodb.types import TypeDeserializer
 from libs.util import ItemHandler
-from handlers.sqsHandler import obtener_eventos_en_cola, EventoEnCola
+from handlers.sqsHandler import obtener_eventos_en_cola
 from aws_lambda_powertools import Logger
 
 logger = Logger(service="event_handler")
