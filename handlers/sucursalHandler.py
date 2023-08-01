@@ -1,6 +1,11 @@
 from libs.conexion import ClienteShopify
-# from models.sucursal import MsucursalInput
-# import re
+from libs.util import ItemHandler
+from libs.dynamodb import (
+    guardar_tienda_id
+)
+from models.sucursal import MSucursalAddInput
+from models.evento import Mtienda
+import re
 from aws_lambda_powertools import Logger
 
 logger = Logger(child=True, service="shopify")
@@ -26,119 +31,139 @@ def shopify_obtener_id(nombre: str, client: ClienteShopify = None) -> str:
         raise
 
 
-# class Sucursal:
-#     @staticmethod
-#     def parseDireccion(direccion: str) -> dict:
-#         ISO_3166_2_VE = {
-#             'Distrito Capital': 'VE-A',
-#             'Anzoátegui': 'VE-B',
-#             'Apure': 'VE-C',
-#             'Aragua': 'VE-D',
-#             'Barinas': 'VE-E',
-#             'Bolívar': 'VE-F',
-#             'Carabobo': 'VE-G',
-#             'Cojedes': 'VE-H',
-#             'Falcón': 'VE-I',
-#             'Guárico': 'VE-J',
-#             'Lara': 'VE-K',
-#             'Mérida': 'VE-L',
-#             'Miranda': 'VE-M',
-#             'Monagas': 'VE-N',
-#             'Nueva Esparta': 'VE-O',
-#             'Portuguesa': 'VE-P',
-#             'Sucre': 'VE-R',
-#             'Táchira': 'VE-S',
-#             'Trujillo': 'VE-T',
-#             'Yaracuy': 'VE-U',
-#             'Zulia': 'VE-V',
-#             'Dependencias Federales': 'VE-W',
-#             'La Guaira': 'VE-X',
-#             'Delta Amacuro': 'VE-Y',
-#             'Amazonas': 'VE-Z'
-#         }
-#         pattern = (r"^(?P<address1>.*)\s(?P<city>\w+), "
-#                    r"Edo.\s(?P<province>[\w\s]+)$")
-#         m = (re.match(pattern, direccion).groupdict())
-#         m['provinceCode'] = ISO_3166_2_VE[m['province']]
-#         return m
-#
-#     def __init__(self, evento):
-#         self.logger = logging.getLogger("Shopify.Sucursal")
-#         self.establecerTipo(evento.data.NewImage.entity)
-#
-#         try:
-#             self._establecerConexion(evento.config['shopify'])
-#             if not evento.data.OldImage:
-#                 self.logger.info("Creando sucursal a partir de tienda.")
-#                 respuesta = self._crear(
-#                     MsucursalInput(
-#                         name=evento.data.NewImage.nombre,
-#                         address={
-#                             **self.parseDireccion(
-#                                 evento.data.NewImage.direccion
-#                             ),
-#                             'phone': evento.data.NewImage.telefono
-#                         }
-#                     )
-#                 )
-#                 evento.gids = (evento.gids | {'tiendas': {
-#                     evento.data.NewImage.codigoTienda:
-#                         respuesta['location']['id']
-#                 }})
-#                 evento.actualizarBD()
-#             elif evento.cambios:
-#                 self.logger.info("Actualizando sucursal.")
-#                 shopifyInput = MsucursalInput(
-#                     name=evento.cambios.nombre,
-#                     adrress={
-#                         **(self.parseDireccion(evento.cambios.direccion)
-#                            if evento.cambios.direccion else {}),
-#                         'phone': evento.cambios.telefono
-#                     }
-#                 )
-#                 self._modificar(
-#                     shopifyInput,
-#                     id=(evento.gids['tiendas']
-#                         [evento.data.OldImage.codigoTienda])
-#                 )
-#                 {
-#                     None: None,
-#                     True: self.activar,
-#                     False: self.desactivar
-#                 }[evento.cambios.habilitado](
-#                     id=(evento.gids['tiendas']
-#                         [evento.data.OldImage.codigoTienda]),
-#                     altId=(evento.gids['tiendas']
-#                            [evento.data.OldImage.codigoTiendaAlt])
-#                 )
-#         except Exception:
-#             raise
-#
-#     def desactivar(self, id: str, altId: str = None):
-#         try:
-#             respuesta = self._request(
-#                 "desactivarSucursal",
-#                 variables={"id": id, "altId": altId}
-#             )
-#             if respuesta["locationDeactivateUserErrors"]:
-#                 raise RuntimeError(
-#                     "Ocurrió un error desactivando la sucursal:\n"
-#                     f"{respuesta['locationDeactivateUserErrors']}")
-#             self.logger.info("Sucursal desactivada exitosamente.")
-#         except Exception:
-#             self.logger.exception("No se pudo desactivar la sucursal.")
-#
-#     def activar(self, id: str, altId: str = None):
-#         try:
-#             respuesta = self._request(
-#                 "activarSucursal",
-#                 variables={"id": id}
-#             )
-#             if respuesta["locationActivateUserErrors"]:
-#                 raise RuntimeError(
-#                     "Ocurrió un error activando la sucursal:\n"
-#                     f"{respuesta['locationActivateUserErrors']}")
-#             self.logger.info("Sucursal activada exitosamente.")
-#         except Exception:
-#             self.logger.exception("No se pudo activar la sucursal.")
-#
+def shopify_crear_sucursal(sucursal_input: MSucursalAddInput,
+                           client: ClienteShopify = None) -> str:
+    try:
+        client = client or ClienteShopify()
+        return client.execute(
+            """
+            mutation crearSucursal($input: LocationAddInput!) {
+                locationAdd(input: $input) {
+                    location {
+                        id
+                    }
+                    userErrors {
+                        message
+                    }
+                }
+            }
+            """,
+            variables={"input": sucursal_input.dict(exclude_none=True)}
+        )['locationAdd']['location']['id']
+    except Exception:
+        logger.exception("Error al crear la sucursal en Shopify.")
+        raise
+
+
+def procesar_direccion(direccion: str) -> dict:
+    ISO_3166_2_VE = {
+        'Distrito Capital': 'VE-A',
+        'Anzoátegui': 'VE-B',
+        'Apure': 'VE-C',
+        'Aragua': 'VE-D',
+        'Barinas': 'VE-E',
+        'Bolívar': 'VE-F',
+        'Carabobo': 'VE-G',
+        'Cojedes': 'VE-H',
+        'Falcón': 'VE-I',
+        'Guárico': 'VE-J',
+        'Lara': 'VE-K',
+        'Mérida': 'VE-L',
+        'Miranda': 'VE-M',
+        'Monagas': 'VE-N',
+        'Nueva Esparta': 'VE-O',
+        'Portuguesa': 'VE-P',
+        'Sucre': 'VE-R',
+        'Táchira': 'VE-S',
+        'Trujillo': 'VE-T',
+        'Yaracuy': 'VE-U',
+        'Zulia': 'VE-V',
+        'Dependencias Federales': 'VE-W',
+        'La Guaira': 'VE-X',
+        'Delta Amacuro': 'VE-Y',
+        'Amazonas': 'VE-Z'
+    }
+    pattern = (r"^(?P<address1>.*)\s(?P<city>\w+), "
+               r"Edo.\s(?P<province>[\w\s]+)$")
+    coincidencias = (re.match(pattern, direccion).groupdict())
+    coincidencias['provinceCode'] = ISO_3166_2_VE[coincidencias['province']]
+
+    return coincidencias
+
+
+class SucursalHandler(ItemHandler):
+    item = "sucursal"
+
+    def __init__(self, evento, client: ClienteShopify = None):
+        self.old_image = evento.old_image
+        if "shopify_id" in self.old_image:
+            self.old_image["shopify_id"] = (
+                self.old_image["shopify_id"].get("sucursal")
+            )
+        self.old_image = Mtienda.parse_obj(evento.old_image)
+        self.cambios = evento.cambios
+        self.cambios.pop("shopify_id", None)
+        self.cambios = Mtienda.parse_obj(self.cambios)
+        self.client = client or ClienteShopify()
+        self.session = None
+
+    @classmethod
+    def desde_tienda(cls, tienda: dict, client: ClienteShopify = None):
+        evento = type("evento", (), {
+            "cambios": tienda,
+            "old_image": {}
+        })
+        return cls(evento, client)
+
+    def guardar_id_dynamo(self):
+        logger.info("Guardando GID de sucursal en Dynamo.")
+        guardar_tienda_id(
+            self.cambios.codigoCompania or self.old_image.codigoCompania,
+            self.cambios.codigoTienda or self.old_image.codigoTienda,
+            self.old_image.shopify_id
+        )
+
+    def crear(self):
+        logger.info("Creando sucursal a partir de tienda.")
+
+        try:
+            location_input = MSucursalAddInput(
+                name=self.cambios.nombre,
+                address={
+                    **procesar_direccion(self.cambios.direccion),
+                    'phone': self.cambios.telefono
+                }
+            )
+            self.old_image.shopify_id = shopify_crear_sucursal(
+                location_input,
+                self.session or self.client
+            )
+            self.guardar_id_dynamo()
+            logger.info("Sucursal creada.")
+        except Exception:
+            logger.info("Error al crear la sucursal.")
+            raise
+
+    def modificar(self):
+        pass
+
+    def ejecutar(self):
+        try:
+            with self.client as self.session:
+                if not self.old_image.shopify_id and self.old_image.nombre:
+                    try:
+                        self.old_image.shopify_id = shopify_obtener_id(
+                            self.old_image.nombre,
+                            self.session
+                        )
+                        self.guardar_id_dynamo()
+                    except IndexError:
+                        pass
+                respuesta = super().ejecutar(
+                    "Shopify",
+                    self.cambios.shopify_id or self.old_image.shopify_id
+                )
+                return respuesta
+        except Exception:
+            logger.info("Error al ejecutar el handler de sucursal.")
+            raise

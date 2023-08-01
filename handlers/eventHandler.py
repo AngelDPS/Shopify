@@ -138,27 +138,28 @@ class EventHandler:
 def procesar_todo(service_name: str, evento: list[dict],
                   handler_mapping: dict[str, ItemHandler]):
     try:
-        records = evento["Records"]
+        record = evento["Records"][0]
     except KeyError:
-        records = evento
+        record = evento[0]
     eventos_en_cola = obtener_eventos_en_cola(service_name=service_name,
-                                              evento_nuevo=records)
+                                              evento_nuevo=record)
     r = []
 
     logger.info("Eventos para procesar: "
-                f"{[ev.contenido[0] for ev in eventos_en_cola]}")
+                f"{[ev.contenido for ev in eventos_en_cola]}")
 
     for n, evento in enumerate(eventos_en_cola):
         try:
-            for ev in evento.contenido:
-                r.append(EventHandler(ev, handler_mapping).ejecutar())
-                logger.debug(r[-1])
+            r.append(
+                EventHandler(evento.contenido, handler_mapping).ejecutar()
+            )
+            logger.debug(r[-1])
         except NotImplementedError:
             logger.warning("La acción requerida no está implementada y se "
                            "ignorará el evento.")
             continue
         except Exception as err:
-            msg = (f"Ocurrió un error manejado el evento:\n{ev}."
+            msg = (f"Ocurrió un error manejado el evento:\n{evento.contenido}."
                    f"Se levantó la excepción '{err}'.")
             logger.exception(msg)
             if n == 0:
