@@ -326,10 +326,12 @@ class ProductoHandler(ItemHandler):
             evento (EventHandler):
             client (ClienteShopify, optional): Defaults to None.
         """
-        if not (evento.old_image.get('shopify_habilitado') or
-                evento.cambios.get('shopify_habilitado')):
+        if not ((evento.old_image.get('shopify_habilitado') or
+                evento.cambios.get('shopify_habilitado')) and
+                (evento.old_image.get('habilitado') or
+                evento.cambios.get('habilitado'))):
             logger.info(
-                """El articulo no está habilitado para MercadoLibre y será
+                """El articulo no está habilitado para Shopify y será
                 ignorado.
                 Para cambiar esto, establezca el registro meli.habilitado
                 con el valor '1'."""
@@ -338,8 +340,11 @@ class ProductoHandler(ItemHandler):
         else:
             self.procesar = True
             campo_precio = get_parameter('SHOPIFY_PRECIO')
-
-            self.cambios = evento.cambios
+            if (evento.cambios.get('shopify_habilitado') or
+                    evento.cambios.get('habilitado')):
+                self.cambios = evento.old_image | evento.cambios
+            else:
+                self.cambios = evento.cambios
             self.cambios.get('shopify_id', {}).pop('imagenes', None)
             self.cambios.get('shopify_id', {}).pop('variante', None)
             if campo_precio in self.cambios:
