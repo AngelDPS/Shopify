@@ -177,10 +177,21 @@ def shopify_cambiar_producto(productInput: MproductInput,
                              client: ClienteShopify = None):
     try:
         client = client or ClienteShopify()
-        client.execute(
+        respuesta = client.execute(
             """
             mutation modificarProducto($input: ProductInput!) {
                 productUpdate(input: $input) {
+                    product {
+                        id
+                        variants(first: 1) {
+                            nodes {
+                                id
+                                inventoryItem {
+                                    id
+                                }
+                            }
+                        }
+                    }
                     userErrors {
                         message
                     }
@@ -194,6 +205,23 @@ def shopify_cambiar_producto(productInput: MproductInput,
     except Exception:
         logger.exception("Ocurrió un error al tratar de modificar el "
                          "producto.")
+        raise
+    try:
+        shopify_id = {
+            'producto': respuesta['productCreate']['product']['id'],
+            'variante': {
+                'id': (respuesta['productCreate']['product']
+                       ['variants']['nodes'][0]['id']),
+                'inventario': (respuesta['productCreate']['product']
+                               ['variants']['nodes'][0]['inventoryItem']
+                               ['id'])
+            },
+            'imagenes': {}
+        }
+        return shopify_id
+    except (KeyError, IndexError):
+        logger.exception("Formato inesperado de respuesta para la creación "
+                         "del producto.")
         raise
 
 
@@ -326,27 +354,18 @@ class ProductoHandler(ItemHandler):
             evento (EventHandler):
             client (ClienteShopify, optional): Defaults to None.
         """
-        if not ((evento.old_image.get('shopify_habilitado') or
+        if ((evento.old_image.get('shopify_habilitado') or
                 evento.cambios.get('shopify_habilitado')) and
                 (evento.old_image.get('habilitado') or
-                evento.cambios.get('habilitado'))):
-            logger.info(
-                """El articulo no está habilitado para Shopify y será
-                ignorado.
-                Para cambiar esto, establezca el registro meli.habilitado
-                con el valor '1'."""
-            )
-            self.procesar = False
-        else:
+                 evento.cambios.get('habilitado'))):
             self.procesar = True
-            campo_precio = get_parameter('SHOPIFY_PRECIO')
+
             if (evento.cambios.get('shopify_habilitado') or
                     evento.cambios.get('habilitado')):
-                self.cambios = evento.old_image | evento.cambios
-            else:
-                self.cambios = evento.cambios
-            self.cambios.get('shopify_id', {}).pop('imagenes', None)
-            self.cambios.get('shopify_id', {}).pop('variante', None)
+                self.force_update = True
+
+            campo_precio = get_parameter('SHOPIFY_PRECIO')
+            self.cambios = evento.cambios
             if campo_precio in self.cambios:
                 self.cambios['precio'] = self.cambios[campo_precio]
             if ('habilitado' in self.cambios
@@ -645,7 +664,7 @@ class ProductoHandler(ItemHandler):
             if self.cambios.co_lin is not None:
                 productInput.collectionsToJoin = [self.obtener_coleccion_id()]
                 productInput.collectionsToLeave = [
-                    self.obtener_coleccion_id(from_old=True)
+                    self.obtener_coleccion_id(use_old=True)
                 ]
             if productInput.dict(exclude_unset=True):
                 productInput.id = self.old_image.shopify_id["producto"]
@@ -729,6 +748,49 @@ class ProductoHandler(ItemHandler):
             logger.exception("No fue posible modificar el producto.")
             raise
 
+    def modificar_absoluto(self):
+        logger.info("Se modificará el producto de forma absoluta.")
+        try:
+            inventory = [MinventoryLevelInput(
+                availableQuantity=(self.cambios.stock_act
+                                   - self.cambios.stock_com),
+                locationId=self.obtener_tienda_id()
+            )]
+            variant_input = MproductVariantInput(
+                **self.cambios.dict(by_alias=True, exclude_none=True),
+                inventoryQuantities=inventory)
+            product_input = MproductInput(
+                **self.cambios.dict(by_alias=True, exclude_none=True),
+                variants=[variant_input],
+                collectionsToJoin=[self.obtener_coleccion_id()]
+            )
+            product_input.id = self.cambios.shopify_id["producto"]
+            self.old_image.shopify_id = shopify_cambiar_producto(
+                product_input, self.session or self.client
+            )
+
+            eliminar_media_ids = [media_id for media_id in
+                                  self.cambios.shopify_id["imagenes"].values()]
+            shopify_borrar_imagen(
+                self.cambios.shopify_id["producto"],
+                eliminar_media_ids,
+                self.session or self.client
+            )
+            anexar_media_input = generar_media_inputs(self.cambios.imagen_url)
+            self.old_image.shopify_id['imagenes'] |= (
+                shopify_anexar_imagen(
+                    self.cambios.shopify_id["producto"],
+                    anexar_media_input,
+                    self.session or self.client
+                )['imagenes']
+            )
+            self.guardar_id_dynamo()
+
+            return ["Producto modificado!"]
+        except Exception:
+            logger.exception("No fue posible modificar el producto.")
+            raise
+
     def ejecutar(self) -> list[str]:
         """Ejecuta la acción requerida por el evento procesado en la instancia.
 
@@ -736,23 +798,9 @@ class ProductoHandler(ItemHandler):
             list[str]: Conjunto de resultados obtenidos por las operaciones
             ejecutadas.
         """
-        if self.procesar:
-            try:
-                with self.client as self.session:
-                    respuesta = super().ejecutar("Shopify",
-                                                 self.cambios.shopify_id
-                                                 or self.old_image.shopify_id)
-                    return respuesta
-            except Exception:
-                logger.exception(
-                    "Ocurrió un problema ejecutando la acción sobre el "
-                    "producto."
-                )
-                raise
-        else:
-            logger.info(
-                "El artículo no está habilitado para procesarse en Shopify."
+        with self.client as self.session:
+            return super().ejecutar(
+                "Shopify",
+                self.cambios.shopify_id.get("producto")
+                or self.old_image.shopify_id.get("producto")
             )
-            return [
-                "El artículo no está habilitado para procesarse en Shopify."
-            ]

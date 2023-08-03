@@ -23,7 +23,7 @@ def _receive_messages(service_name: str) -> list:
             """
         )
     if os.getenv("AWS_EXECUTION_ENV") is None:
-        session = boto3.Session(profile_name='generic-dev')
+        session = boto3.Session(profile_name=os.getenv("AWS_PROFILE_NAME"))
     else:
         session = boto3
     sqs_queue = (

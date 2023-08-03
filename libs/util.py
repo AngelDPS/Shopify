@@ -66,6 +66,8 @@ class ItemHandler(ABC):
     item: str
     old_image: dict | BaseModel
     cambios: dict | BaseModel
+    procesar: bool = False
+    force_update: bool = False
 
     @abstractmethod
     def __init__(self): pass
@@ -77,6 +79,9 @@ class ItemHandler(ABC):
     def modificar(self): pass
 
     @abstractmethod
+    def modificar_absoluto(self): pass
+
+    @abstractmethod
     def ejecutar(self, web_store: str, id: str | None) -> list[str]:
         """Ejecuta la acción requerida por el evento procesado en la instancia.
 
@@ -85,34 +90,47 @@ class ItemHandler(ABC):
             ejecutadas.
         """
         try:
-            if self.cambios.dict(exclude_unset=True):
-                logger.info("Se aplicarán los cambios al "
-                            f"{self.item} en {web_store}.")
-                if not self.old_image.dict(exclude_unset=True):
-                    logger.info(
-                        "Al no haber OldImage en el evento, se identica como "
-                        "un INSERT y se procede a crear el "
-                        f"{self.item} en {web_store}."
-                    )
-                    respuesta = self.crear()
-                elif not id:
-                    logger.info(
-                        "En el evento, proveniente de la base de datos, no se "
-                        f"encontró el ID de {self.item} para {web_store}. "
-                        f"Se creará un {self.item} nuevo con la data "
-                        "actualizada."
-                    )
-                    self.cambios = self.cambios.parse_obj(
-                        self.old_image.dict()
-                        | self.cambios.dict(exclude_unset=True)
-                    )
-                    respuesta = self.crear()
+            if self.procesar:
+                if self.cambios.dict(exclude_unset=True):
+                    logger.info("Se aplicarán los cambios al "
+                                f"{self.item} en {web_store}.")
+                    if not self.old_image.dict(exclude_unset=True):
+                        logger.info(
+                            "Al no haber OldImage en el evento, se identica "
+                            "como un INSERT y se procede a crear el "
+                            f"{self.item} en {web_store}."
+                        )
+                        respuesta = self.crear()
+                    elif (not id) or self.force_update:
+                        self.cambios = self.cambios.parse_obj(
+                            self.old_image.dict()
+                            | self.cambios.dict(exclude_unset=True)
+                        )
+                        if not id:
+                            logger.info(
+                                "En el evento, proveniente de la base de "
+                                "datos, no se encontró el ID de "
+                                f"{self.item} para {web_store}. Se creará un "
+                                f"{self.item} nuevo con la data actualizada."
+                            )
+                            respuesta = self.crear()
+                        else:
+                            respuesta = self.modificar_absoluto()
+                    else:
+                        respuesta = self.modificar()
                 else:
-                    respuesta = self.modificar()
+                    logger.info("Los cambios encontrados no ameritan "
+                                f"actualizaciones en {web_store}.")
+                    respuesta = ["No se realizaron acciones."]
             else:
-                logger.info("Los cambios encontrados no ameritan "
-                            f"actualizaciones en {web_store}.")
-                respuesta = ["No se realizaron acciones."]
+                logger.info(
+                    "El artículo no está habilitado para procesarse en "
+                    + web_store + "."
+                )
+                respuesta = [
+                    "El artículo no está habilitado para procesarse en "
+                    + web_store + "."
+                ]
         except Exception:
             logger.exception("Ocurrió un problema ejecutando la acción "
                              "sobre el producto.")
