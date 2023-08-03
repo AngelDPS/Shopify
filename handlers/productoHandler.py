@@ -306,6 +306,31 @@ def shopify_borrar_imagen(productId: str, mediaIds: list[str],
         raise
 
 
+def shopify_abandonar_colecciones(product_id: str,
+                                  client: ClienteShopify = None):
+    client = client or ClienteShopify()
+    collection_ids = client.execute(
+        """
+        query productCollectionsId($GID: ID!) {
+            product(id: $GID) {
+                collections(first: 10) {
+                    nodes {
+                        id
+                    }
+                }
+            }
+        }
+        """,
+        variables={"GID": product_id}
+    )["product"]["collections"]["nodes"]
+    collection_ids = [node["id"] for node in collection_ids]
+
+    shopify_cambiar_producto(
+        MproductInput(collectionsToLeave=collection_ids, id=product_id),
+        client
+    )
+
+
 def generar_url(fname: str):
     try:
         s3_client = boto3.client(
@@ -754,6 +779,11 @@ class ProductoHandler(ItemHandler):
     def modificar_absoluto(self):
         logger.info("Se modificará el producto de forma absoluta.")
         try:
+            shopify_abandonar_colecciones(
+                self.cambios.shopify_id["producto"],
+                self.session or self.client
+            )
+
             inventory = [MinventoryLevelInput(
                 availableQuantity=(self.cambios.stock_act
                                    - self.cambios.stock_com),
