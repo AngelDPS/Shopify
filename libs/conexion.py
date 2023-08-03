@@ -10,10 +10,10 @@ logger = Logger(child=True, service="shopify")
 
 class ClienteShopify(Client):
     API_VERSION: str = "2023-04"
-    URL = (f"https://{get_parameter('SHOPIFY_SHOP')}.myshopify.com/"
-           f"admin/api/{API_VERSION}/graphql.json")
 
     def __init__(self):
+        self.URL = (f"https://{get_parameter('SHOPIFY_SHOP')}.myshopify.com/"
+                    f"admin/api/{self.API_VERSION}/graphql.json")
         transport = RequestsHTTPTransport(
             self.URL,
             headers={
