@@ -628,9 +628,9 @@ class ProductoHandler(ItemHandler):
         """
         try:
             delta = (
-                (self.cambios.stock_act or self.old_image.stock_act
+                ((self.cambios.stock_act or self.old_image.stock_act)
                  - self.old_image.stock_act)
-                - (self.cambios.stock_com or self.old_image.stock_com
+                - ((self.cambios.stock_com or self.old_image.stock_com)
                    - self.old_image.stock_com)
             )
             if delta != 0:
