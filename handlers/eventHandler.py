@@ -54,6 +54,7 @@ class EventHandler:
             elif v != new_dict.get(k) and k != "updated_at":
                 cambios[k] = new_dict.get(k)
         cambios |= {k: v for k, v in new_dict.items() if k not in old_dict}
+        cambios = {k: v for k, v in cambios.items() if (v or v is None)}
         return cambios
 
     @staticmethod

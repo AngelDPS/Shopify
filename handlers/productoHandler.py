@@ -208,11 +208,11 @@ def shopify_cambiar_producto(productInput: MproductInput,
         raise
     try:
         shopify_id = {
-            'producto': respuesta['productCreate']['product']['id'],
+            'producto': respuesta['productUpdate']['product']['id'],
             'variante': {
-                'id': (respuesta['productCreate']['product']
+                'id': (respuesta['productUpdate']['product']
                        ['variants']['nodes'][0]['id']),
-                'inventario': (respuesta['productCreate']['product']
+                'inventario': (respuesta['productUpdate']['product']
                                ['variants']['nodes'][0]['inventoryItem']
                                ['id'])
             },
@@ -354,6 +354,10 @@ class ProductoHandler(ItemHandler):
             evento (EventHandler):
             client (ClienteShopify, optional): Defaults to None.
         """
+        self.client = client or ClienteShopify()
+        self.session = None
+        self.cambios = {}
+        self.old_image = {}
         if ((evento.old_image.get('shopify_habilitado') or
                 evento.cambios.get('shopify_habilitado')) and
                 (evento.old_image.get('habilitado') or
@@ -377,7 +381,6 @@ class ProductoHandler(ItemHandler):
                                      evento.old_image.get('shopify_habilitado')
                                      )
                 ).name.upper()
-            self.cambios = MArticulo.parse_obj(self.cambios)
 
             self.old_image = evento.old_image
             if self.old_image:
@@ -385,10 +388,9 @@ class ProductoHandler(ItemHandler):
                 self.old_image['habilitado'] = Habilitado(
                     self.old_image.get('habilitado', 0)
                 ).name.upper()
-            self.old_image = MArticulo.parse_obj(self.old_image)
 
-            self.client = client or ClienteShopify()
-            self.session = None
+        self.cambios = MArticulo.parse_obj(self.cambios)
+        self.old_image = MArticulo.parse_obj(self.old_image)
 
     def guardar_id_dynamo(self):
         """Actualiza el GID de Shopify para el producto usando la información
@@ -735,7 +737,8 @@ class ProductoHandler(ItemHandler):
             modificación.
         """
         self.old_image.shopify_id = (self.cambios.shopify_id
-                                     or self.old_image.shopify_id)
+                                     if self.cambios.shopify_id.get("producto")
+                                     else self.old_image.shopify_id)
         try:
             respuestas = []
             respuestas.append(self._publicar())
