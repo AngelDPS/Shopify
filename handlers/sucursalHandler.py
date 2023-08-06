@@ -92,7 +92,7 @@ def procesar_direccion(direccion: str) -> dict:
 
 
 class SucursalHandler(ItemHandler):
-    item = "sucursal"
+    ITEM_TYPE = "sucursal"
 
     def __init__(self, evento, client: ClienteShopify = None):
         self.old_image = evento.old_image
