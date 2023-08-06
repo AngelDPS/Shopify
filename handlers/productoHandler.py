@@ -370,7 +370,9 @@ class Habilitado(Enum):
 
 
 class ProductoHandler(ItemHandler):
-    item = "producto"
+    ITEM_TYPE = "producto"
+    procesar = False
+    force_update = False
 
     def __init__(self, evento: EventHandler, client: ClienteShopify = None):
         """Constructor de la clase
@@ -627,12 +629,14 @@ class ProductoHandler(ItemHandler):
             str: Cadena con información de la operación.
         """
         try:
-            delta = (
-                ((self.cambios.stock_act or self.old_image.stock_act)
-                 - self.old_image.stock_act)
-                - ((self.cambios.stock_com or self.old_image.stock_com)
-                   - self.old_image.stock_com)
-            )
+            stock_act = (self.cambios.stock_act
+                         if self.cambios.stock_act is not None
+                         else self.old_image.stock_act)
+            stock_com = (self.cambios.stock_com
+                         if self.cambios.stock_com is not None
+                         else self.old_image.stock_com)
+            delta = ((stock_act - self.old_image.stock_act)
+                     - (stock_com - self.old_image.stock_com))
             if delta != 0:
                 shopify_cambiar_inventario(
                     delta,
@@ -831,9 +835,24 @@ class ProductoHandler(ItemHandler):
             list[str]: Conjunto de resultados obtenidos por las operaciones
             ejecutadas.
         """
-        with self.client as self.session:
-            return super().ejecutar(
-                "Shopify",
-                self.cambios.shopify_id.get("producto")
-                or self.old_image.shopify_id.get("producto")
+        if self.procesar:
+            id = (self.cambios.shopify_id.get("producto")
+                  or self.old_image.shopify_id.get("producto"))
+            with self.client as self.session:
+                if self.force_update and id:
+                    self.cambios = self.cambios.parse_obj(
+                        self.old_image.dict()
+                        | self.cambios.dict(exclude_unset=True)
+                    )
+                    return self.modificar_absoluto()
+                else:
+                    return super().ejecutar("Shopify", id)
+        else:
+            logger.info(
+                "El artículo no está habilitado para procesarse en "
+                "Shopify."
             )
+            return [
+                "El artículo no está habilitado para procesarse en "
+                "Shopify."
+            ]

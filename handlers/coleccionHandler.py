@@ -85,7 +85,7 @@ def modificarColeccion(collection_input: McollectionInput,
 
 
 class ColeccionHandler(ItemHandler):
-    item = "colección"
+    ITEM_TYPE = "colección"
 
     def __init__(self, evento, client: ClienteShopify = None):
         self.old_image = Mlinea.parse_obj(evento.old_image)
