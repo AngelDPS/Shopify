@@ -621,7 +621,7 @@ class ProductoHandler(ItemHandler):
         else:
             return ""
 
-    def _modificarInventario(self) -> str:
+    def _modificar_inventario(self) -> str:
         """Detecta cambios de inventario que ameriten actualización en Shopify
         y ejecuto la solicitud en Shopify.
 
@@ -656,7 +656,7 @@ class ProductoHandler(ItemHandler):
                              "inventario del producto.")
             raise
 
-    def _modificarVariante(self) -> str:
+    def _modificar_variante(self) -> str:
         """Si detecta cambios que afecten a la variante, ejecuta la solicitud
         de actualización a Shopify.
 
@@ -680,7 +680,7 @@ class ProductoHandler(ItemHandler):
                              " del producto.")
             raise
 
-    def _modificarProducto(self) -> str:
+    def _modificar_producto(self) -> str:
         """Si detecta cambios que afecten al producto general, ejecuta la
         solicitud de actualización a Shopify.
 
@@ -711,51 +711,29 @@ class ProductoHandler(ItemHandler):
                              "producto.")
             raise
 
-    def _cambiosImagenes(self):
-        try:
-            urls_anexados = list(
-                set(self.cambios.imagen_url or self.old_image.imagen_url)
-                - set(self.old_image.imagen_url)
+    def _actualizar_imagenes(self):
+        if self.cambios.imagen_url:
+            eliminar_media_ids = [
+                media_id for media_id in
+                self.old_image.shopify_id["imagenes"].values()
+            ]
+            shopify_borrar_imagen(
+                self.old_image.shopify_id["producto"],
+                eliminar_media_ids,
+                self.session or self.client
             )
-            urls_removidos = list(
-                set(self.old_image.imagen_url)
-                - set(self.cambios.imagen_url or self.old_image.imagen_url)
+            anexar_media_input = generar_media_inputs(
+                self.cambios.imagen_url
             )
-            msg = ""
-            if urls_anexados:
-                anexarMediaInput = generar_media_inputs(urls_anexados)
-                logger.debug(anexarMediaInput)
-                if anexarMediaInput:
-                    self.old_image.shopify_id['imagenes'] |= (
-                        shopify_anexar_imagen(
-                            self.old_image.shopify_id["producto"],
-                            anexarMediaInput,
-                            self.session or self.client
-                        )['imagenes']
-                    )
-                    msg += "Imágenes añadidas."
-            if urls_removidos:
-                logger.debug(urls_removidos)
-                eliminarMediaIds = [
-                    self.old_image.shopify_id["imagenes"].pop(fname)
-                    for fname in urls_removidos
-                ]
-                logger.debug(eliminarMediaIds)
-                shopify_borrar_imagen(
+            self.old_image.shopify_id['imagenes'] = (
+                shopify_anexar_imagen(
                     self.old_image.shopify_id["producto"],
-                    eliminarMediaIds,
+                    anexar_media_input,
                     self.session or self.client
-                )
-                msg += "Imágenes removidas."
-            if not (urls_anexados or urls_removidos):
-                logger.info("La información suministrada no produjo cambios a "
-                            "las imágenes")
-                return "Imágenes no actualizadas."
+                )['imagenes']
+            )
             self.guardar_id_dynamo()
-            return msg
-        except Exception:
-            logger.exception("Hubo problemas actualizando las imágenes.")
-            raise
+            return "Imágenes actualizadas."
 
     def modificar(self) -> list[str]:
         """Ejecuta todas los métodos de modificación para los elementos del
@@ -771,10 +749,10 @@ class ProductoHandler(ItemHandler):
         try:
             respuestas = []
             respuestas.append(self._publicar())
-            respuestas.append(self._modificarInventario())
-            respuestas.append(self._modificarVariante())
-            respuestas.append(self._modificarProducto())
-            respuestas.append(self._cambiosImagenes())
+            respuestas.append(self._modificar_inventario())
+            respuestas.append(self._modificar_variante())
+            respuestas.append(self._modificar_producto())
+            respuestas.append(self._actualizar_imagenes())
             return respuestas
         except Exception:
             logger.exception("No fue posible modificar el producto.")
@@ -806,22 +784,7 @@ class ProductoHandler(ItemHandler):
                 product_input, self.session or self.client
             )
 
-            eliminar_media_ids = [media_id for media_id in
-                                  self.cambios.shopify_id["imagenes"].values()]
-            shopify_borrar_imagen(
-                self.cambios.shopify_id["producto"],
-                eliminar_media_ids,
-                self.session or self.client
-            )
-            anexar_media_input = generar_media_inputs(self.cambios.imagen_url)
-            self.old_image.shopify_id['imagenes'] |= (
-                shopify_anexar_imagen(
-                    self.cambios.shopify_id["producto"],
-                    anexar_media_input,
-                    self.session or self.client
-                )['imagenes']
-            )
-            self.guardar_id_dynamo()
+            self._actualizar_imagenes()
 
             return ["Producto modificado!"]
         except Exception:
