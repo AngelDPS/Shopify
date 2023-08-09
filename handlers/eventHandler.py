@@ -145,7 +145,6 @@ def procesar_todo(service_name: str, evento: list[dict],
         record = evento[0]
     eventos_en_cola = obtener_eventos_en_cola(service_name=service_name,
                                               evento_nuevo=record)
-    # eventos_en_cola = [EventoEnCola(dynamo_data=records)]
     r = []
 
     logger.info("Eventos para procesar: "

@@ -1,6 +1,7 @@
 credentials*
 TODO
 .env*
+.venv*
 logs*
 *__pycache__*
 .graphqlrc*
