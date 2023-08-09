@@ -24,7 +24,7 @@ class Marticulo(BaseModel):
     codigo_barra: str | None = None
     referencia: str | None = None
     marca: str | None = "N/A"
-    imagen_url: list[str] | None = []
+    imagen_url: list[str] | None = None
     modelo: str | None = "N/A"
 
 

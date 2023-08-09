@@ -397,6 +397,7 @@ class ProductoHandler(ItemHandler):
 
             campo_precio = get_parameter('SHOPIFY_PRECIO')
             self.cambios = evento.cambios
+            self.cambios.get("shopify_id", {}).pop("imagenes", None)
             if campo_precio in self.cambios:
                 self.cambios['precio'] = self.cambios[campo_precio]
             if ('habilitado' in self.cambios
@@ -712,7 +713,7 @@ class ProductoHandler(ItemHandler):
             raise
 
     def _actualizar_imagenes(self):
-        if self.cambios.imagen_url:
+        if self.cambios.imagen_url is not None:
             eliminar_media_ids = [
                 media_id for media_id in
                 self.old_image.shopify_id["imagenes"].values()
@@ -734,6 +735,8 @@ class ProductoHandler(ItemHandler):
             )
             self.guardar_id_dynamo()
             return "Imágenes actualizadas."
+        else:
+            return "Imágenes no actualizadas."
 
     def modificar(self) -> list[str]:
         """Ejecuta todas los métodos de modificación para los elementos del
@@ -780,8 +783,11 @@ class ProductoHandler(ItemHandler):
                 collectionsToJoin=[self.obtener_coleccion_id()]
             )
             product_input.id = self.cambios.shopify_id["producto"]
-            self.old_image.shopify_id = shopify_cambiar_producto(
-                product_input, self.session or self.client
+            (self.old_image.shopify_id,
+             self.old_image.shopify_id["imagenes"]) = (
+                shopify_cambiar_producto(product_input,
+                                         self.session or self.client),
+                self.old_image.shopify_id["imagenes"]
             )
 
             self._actualizar_imagenes()
