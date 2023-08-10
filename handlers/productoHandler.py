@@ -350,12 +350,14 @@ def generar_url(fname: str):
         return None
 
 
-def generar_media_inputs(file_names: list[str]) -> list[McreateMediaInput]:
+def generar_media_inputs(
+    file_names: list[str] | None
+) -> list[McreateMediaInput]:
     media_inputs = [
         McreateMediaInput(mediaContentType="IMAGE",
                           originalSource=generar_url(fname),
                           fname=fname)
-        for fname in file_names
+        for fname in (file_names or [])
     ]
     media_inputs = [m_input for m_input in media_inputs
                     if m_input.originalSource is not None]
