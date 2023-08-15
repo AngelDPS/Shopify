@@ -9,34 +9,6 @@ from aws_lambda_powertools import Logger
 logger = Logger(service="utilities")
 
 
-def obtener_codigo(evento: list[dict]) -> str | None:
-    """Obtiene el código identificador de la entidad del ítem de DynamoDB
-    que generó el evento.
-
-    Args:
-        evento (list[dict]): Evento recibido por Lambda para ser procesado
-        debido a cambios en DynamoDB.
-
-    Returns:
-        str | None: Código  único del ítem de DynamoDB para la entidad.
-    """
-    try:
-        record = evento["dynamodb"]["NewImage"]
-    except KeyError:
-        record = evento["Records"][0]["dynamodb"]["NewImage"]
-    except IndexError:
-        record = evento[0]["dynamodb"]["NewImage"]
-    match record["entity"]["S"]:
-        case "articulos":
-            return record["co_art"]["S"]
-        case "lineas":
-            return record["co_lin"]["S"]
-        case "tiendas":
-            return record["codigoTienda"]["S"]
-        case _:
-            return None
-
-
 def get_parameter(key: str) -> Any:
     """Obtiene el valor asociado al key del json almacenado como
     parámetro "/akia9/akiastock/{NOMBRE_COMPANIA}"en el
@@ -60,6 +32,34 @@ def get_parameter(key: str) -> Any:
         transform="json",
         max_age=300
     ).get(key)
+
+
+def obtener_codigo(record: dict) -> str | None:
+    """Obtiene el código identificador de la entidad del ítem de DynamoDB
+    que generó el record.
+
+    Args:
+        record (dict): Evento recibido por Lambda para ser procesado
+        debido a cambios en DynamoDB.
+
+    Returns:
+        str | None: Código  único del ítem de DynamoDB para la entidad.
+    """
+    try:
+        new_image = record["dynamodb"]["NewImage"]
+    except KeyError:
+        new_image = record["Records"][0]["dynamodb"]["NewImage"]
+    except IndexError:
+        new_image = record[0]["dynamodb"]["NewImage"]
+    match new_image["entity"]["S"]:
+        case "articulos":
+            return new_image["co_art"]["S"]
+        case "lineas":
+            return new_image["co_lin"]["S"]
+        case "tiendas":
+            return new_image["codigoTienda"]["S"]
+        case _:
+            return None
 
 
 class ItemHandler(ABC):
@@ -112,9 +112,40 @@ class ItemHandler(ABC):
             else:
                 logger.info("Los cambios encontrados no ameritan "
                             f"actualizaciones en {web_store}.")
-                respuesta = ["No se realizaron acciones."]
+                respuesta = {
+                    "statusCode": 200,
+                    "body": "No se realizaron cambios"
+                }
         except Exception:
-            logger.exception("Ocurrió un problema ejecutando la acción "
-                             "sobre el producto.")
+            logger.info("Ocurrió un problema ejecutando la acción "
+                        "sobre el producto.")
             raise
         return respuesta
+
+
+def filtro_campos_completos(evento):
+    filtro_campos = [
+        "prec_vta1", "prec_vta2", "prec_vta3", "PK", "SK", "habilitado",
+        "art_des", "codigoCompania", "codigoTienda", "co_art", "co_lin",
+        "stock_act", "stock_com", "imagen_url"
+    ]
+
+    try:
+        ev = evento["Records"][0]
+    except IndexError:
+        ev = evento[0]
+
+    if ev.get("eventName") == "INSERT":
+        for key in filtro_campos:
+            if key not in ev["dynamodb"]["NewImage"]:
+                logger.error("El evento no contiene el campo " + key)
+                raise ValueError("El evento no contiene el campo " + key)
+    elif ev.get("eventName") == "MODIFY":
+        for key in filtro_campos:
+            if (key not in ev["dynamodb"]["NewImage"]
+                    or key not in ev["dynamodb"]["OldImage"]):
+                logger.error("El evento no contiene el campo " + key)
+                raise ValueError("El evento no contiene el campo " + key)
+    else:
+        logger.error("El evento no es válido", evento)
+        raise ValueError("El evento no es válido")
