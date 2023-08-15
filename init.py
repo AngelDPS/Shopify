@@ -31,7 +31,7 @@ def lambda_handler(event: List[dict], context: Any) -> List[Dict[str, str]]:
         'lineas': ColeccionHandler
         # 'tiendas': SucursalHandler
     }
-    return procesar_todo('shopify', event, handler_mapping)
+    return procesar_todo(event, handler_mapping)
 
 
 if __name__ == "__main__":

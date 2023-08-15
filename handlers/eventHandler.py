@@ -1,6 +1,7 @@
 from boto3.dynamodb.types import TypeDeserializer
 from libs.util import ItemHandler
 from handlers.sqsHandler import obtener_records_en_cola
+from json import dumps
 from aws_lambda_powertools import Logger
 
 logger = Logger(service="event_handler")
@@ -45,8 +46,8 @@ def obtener_cambios(new_dict: dict, old_dict: dict) -> dict:
     cambios = {}
     for k, v in old_dict.items():
         # if isinstance(v, dict):
-            # cambios[k] = EventHandler.obtener_cambios(new_dict.get(k,{}),
-            #                                           v)
+        # cambios[k] = EventHandler.obtener_cambios(new_dict.get(k,{}),
+        #                                           v)
         if v != new_dict.get(k) and k != "updated_at":
             cambios[k] = new_dict.get(k)
     cambios |= {k: v for k, v in new_dict.items() if k not in old_dict}
@@ -96,7 +97,6 @@ class EventHandler:
         Args:
             record (dict): Record de un evento de DynamoDB.
         """
-        self.event_name = evento['eventName']
         self.old_image, self.cambios = (
             EventHandler.formatear_record(record)
         )
@@ -165,7 +165,7 @@ def procesar_todo(evento: list[dict],
         if isinstance(r[-1], dict) and r[-1].get("statusCode") >= 400:
             if n == 0 and r[-1].get("statusCode") != 400:
                 sqs_queue.send_message(
-                    MessageBody=json.dumps(evento),
+                    MessageBody=dumps(evento),
                     MessageGroupId="ERROR_QUEUE",
                     MessageDeduplicationId=record.contenido.get("eventID")
                 )

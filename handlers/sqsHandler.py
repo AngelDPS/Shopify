@@ -3,6 +3,7 @@ import boto3
 from aws_lambda_powertools import Logger
 from libs.util import obtener_codigo
 from os import getenv
+from typing import Any
 
 logger = Logger(service="sqs_handler")
 
