@@ -150,15 +150,28 @@ class SucursalHandler(ItemHandler):
     def ejecutar(self):
         try:
             with self.client as self.session:
-                if not self.old_image.shopify_id and self.old_image.nombre:
+                if (
+                    not (self.old_image.shopify_id or self.cambios.shopify_id)
+                    and (self.old_image.nombre or self.cambios.nombre)
+                ):
                     try:
                         self.old_image.shopify_id = shopify_obtener_id(
-                            self.old_image.nombre,
+                            self.old_image.nombre or self.cambios.nombre,
                             self.session
                         )
                         self.guardar_id_dynamo()
+                        logger.info(
+                            "Se encontró una tienda con el mismo nombre en "
+                            "Shopify. Se guardará el ID en la base de datos y "
+                            "se actualizará con la información entrante."
+                        )
                     except IndexError:
-                        pass
+                        logger.info(
+                            "No se encontró ID proveniente de Dynamo ni "
+                            "tiendas bajo el mismo nombre "
+                            "para Shopify.\n"
+                            "Se creará una tienda nueva."
+                        )
                 respuesta = super().ejecutar(
                     "Shopify",
                     self.cambios.shopify_id or self.old_image.shopify_id

@@ -226,7 +226,7 @@ class ColeccionHandler(ItemHandler):
                             "No se encontró ID proveniente de Dynamo ni "
                             "colecciones bajo el mismo nombre de la línea "
                             "para Shopify.\n"
-                            "Se creará una colección nueva,"
+                            "Se creará una colección nueva."
                         )
                 respuesta = super().ejecutar("Shopify",
                                              self.cambios.shopify_id
